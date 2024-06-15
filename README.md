@@ -22,6 +22,11 @@ An Opinionated Lightweight Implementation of V2Ray, in Rust Programming Language
 * ClientHello fingerprinting resistance
 * Easy configuration
 
+## Requirements in macOS
+
+```shell
+brew install protobuf
+```
 
 ## Config example
 

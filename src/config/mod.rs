@@ -286,7 +286,12 @@ impl Config {
         let mut file = File::open(filename)?;
         let mut config_string = String::new();
         file.read_to_string(&mut config_string)?;
-        let config = toml::from_str(&config_string)?;
+        let config = toml::from_str(&config_string).map_err(|e| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("parse config file failed: {}", e),
+            )
+        })?;
         Ok(config)
     }
     fn build_inner_map<'a>(&'a self) -> io::Result<HashMap<String, ChainStreamBuilder>> {

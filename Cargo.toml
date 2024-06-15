@@ -11,59 +11,59 @@ default = []
 strict-vmess-udp = []
 
 [dependencies]
-actix-rt = "2.8"
-actix-server = "2.2.0"
-actix-service = "2.0"
+actix-rt = "2"
+actix-server = "2"
+actix-service = "2"
 aead = "0.5"
-aes = "0.8.3"
+aes = "0.8"
 aes-gcm = "0.10"
-anyhow = "1.0"
+anyhow = "1"
 async-trait = "0.1"
-base64 = "0.21.2"
+base64 = "0.22"
 bitvec = "1"
-bloomfilter = "1.0.9"
-boring = "4.2.0"
-boring-sys = "4.2.0"
-byte_string = "1.0"
+bloomfilter = "1"
+boring = "4"
+boring-sys = "4"
+byte_string = "1"
 bytes = "1"
 chacha20poly1305 = "0.10"
-cidr-utils = "0.5.10"
+cidr-utils = "0.5"
 clap = "4"
-crc32fast = "1.3.2"
+crc32fast = "1"
 domain_matcher = {git = "https://github.com/darsvador/DomainMatcher", rev = "8df5a46746d90900d"}
-env_logger = "0.10"
-foreign-types-shared = "0.3.1"
+env_logger = "0.11"
+foreign-types-shared = "0.3"
 futures-util = {version = "0.3", default-features = false, features = ["sink", "std"]}
-generic-array = "0.14.7"
+generic-array = "0.14"
 hkdf = "0.12"
 hmac = "0.12"
 log = "0.4"
-md-5 = "0.10.5"
+md-5 = "0.10"
 prost = "0.11"
-protobuf = {version = "3.0.1", features = ["with-bytes"]}
+protobuf = {version = "3", features = ["with-bytes"]}
 rand = {version = "0.8", features = ["small_rng"]}
-regex = "1.7.3"
-serde = {version = "1.0", features = ["derive"]}
-sha-1 = "0.10.1"
-sha2 = "0.10.6"
-socket2 = {version = "0.4.7", features = ["all"]}
-spin = "0.9.6"
-tokio = {version = "1.26", features = ["net", "io-util", "macros", "sync"]}
-tokio-boring = "4.2.0"
-tokio-tungstenite = {version = "0.20", features = ["stream", "handshake"], default-features = false}
+regex = "1"
+serde = {version = "1", features = ["derive"]}
+sha-1 = "0.10"
+sha2 = "0.10"
+socket2 = {version = "0.5", features = ["all"]}
+spin = "0.9"
+tokio = {version = "1", features = ["net", "io-util", "macros", "sync"]}
+tokio-boring = "4"
+tokio-tungstenite = {version = "0.23", features = ["stream", "handshake"], default-features = false}
 tokio-util = {version = "0.7", features = ["codec", "net"]}
-toml = "0.5"
+toml = "0.8"
 tonic = "0.9"
-uuid = {version = "1.3", features = ["std", "v4"]}
+uuid = {version = "1", features = ["std", "v4"]}
 #cidr_matcher={git="https://github.com/Qv2ray/CIDRMatcher"}
-brotli = "3.3.4"
-gentian = "0.1.8"
-h2 = "0.3.20"
+brotli = "3"
+gentian = "0.1"
+h2 = "0.3"
 http = "0.2"
-hyper = {version = "0.14.27", features = ["http1", "http2", "client", "server"]}
+hyper = {version = "0.14", features = ["http1", "http2", "client", "server"]}
 libc = "0.2"
 once_cell = "1"
-tower = "0.4.13"
+tower = "0.4"
 
 [profile.release]
 codegen-units = 1
@@ -72,14 +72,14 @@ opt-level = 3
 strip = true
 
 [build-dependencies]
-protobuf-codegen = "3.2.0"
-tonic-build = "0.10"
+protobuf-codegen = "3"
+tonic-build = "0.11"
 
 [target.'cfg(windows)'.dependencies]
-schannel = "0.1.21"
+schannel = "0.1"
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
-openssl-probe = "0.1.5"
+openssl-probe = "0.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-security-framework = "2.9.1"
+security-framework = "2"
