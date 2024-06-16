@@ -21,6 +21,7 @@ pub fn new_error<T: ToString>(message: T) -> io::Error {
     );
 }
 
+#[allow(dead_code)]
 pub trait BlockCipherHelper {
     fn new_with_slice(key: &[u8]) -> Self;
     fn encrypt_with_slice(&self, block: &mut [u8]);

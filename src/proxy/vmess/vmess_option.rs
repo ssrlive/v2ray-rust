@@ -1,6 +1,7 @@
 use crate::proxy::Address;
 use uuid::Uuid;
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct VmessOption {
     pub uuid: Uuid,

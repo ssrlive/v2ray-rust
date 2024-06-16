@@ -22,10 +22,15 @@ An Opinionated Lightweight Implementation of V2Ray, in Rust Programming Language
 * ClientHello fingerprinting resistance
 * Easy configuration
 
-## Requirements in macOS
+## Requirements
 
+- macOS
 ```shell
 brew install protobuf
+```
+- Ubuntu
+```shell
+sudo apt-get install protobuf-compiler -y
 ```
 
 ## Config example

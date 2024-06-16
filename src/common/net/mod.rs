@@ -49,6 +49,7 @@ where
     Poll::Ready(Ok(n))
 }
 
+#[allow(dead_code)]
 pub trait PollUtil {
     type T;
     fn drop_poll_result(self) -> Poll<io::Result<()>>;
