@@ -9,6 +9,7 @@ version = "0.1.0"
 [features]
 default = []
 strict-vmess-udp = []
+enable_useless = ["boring", "boring-sys", "prost", "tokio-boring", "tonic"]
 
 [dependencies]
 actix-rt = "2"
@@ -22,48 +23,58 @@ async-trait = "0.1"
 base64 = "0.22"
 bitvec = "1"
 bloomfilter = "1"
-boring = "4"
-boring-sys = "4"
+boring = { version = "4", optional = true }
+boring-sys = { version = "4", optional = true }
+#cidr_matcher={git="https://github.com/Qv2ray/CIDRMatcher"}
+brotli = { version = "6", features = ["ffi-api"] }
 byte_string = "1"
 bytes = "1"
 chacha20poly1305 = "0.10"
 cidr-utils = "0.5"
 clap = "4"
 crc32fast = "1"
-domain_matcher = {git = "https://github.com/darsvador/DomainMatcher", rev = "8df5a46746d90900d"}
+domain_matcher = { git = "https://github.com/darsvador/DomainMatcher", rev = "8df5a46746d90900d" }
 env_logger = "0.11"
 foreign-types-shared = "0.3"
-futures-util = {version = "0.3", default-features = false, features = ["sink", "std"]}
+futures-util = { version = "0.3", default-features = false, features = [
+    "sink",
+    "std",
+] }
 generic-array = "0.14"
-hkdf = "0.12"
-hmac = "0.12"
-log = "0.4"
-md-5 = "0.10"
-prost = "0.11"
-protobuf = {version = "3", features = ["with-bytes"]}
-rand = {version = "0.8", features = ["small_rng"]}
-regex = "1"
-serde = {version = "1", features = ["derive"]}
-sha-1 = "0.10"
-sha2 = "0.10"
-socket2 = {version = "0.5", features = ["all"]}
-spin = "0.9"
-tokio = {version = "1", features = ["net", "io-util", "macros", "sync"]}
-tokio-boring = "4"
-tokio-tungstenite = {version = "0.23", features = ["stream", "handshake"], default-features = false}
-tokio-util = {version = "0.7", features = ["codec", "net"]}
-toml = "0.8"
-tonic = "0.9"
-uuid = {version = "1", features = ["std", "v4"]}
-#cidr_matcher={git="https://github.com/Qv2ray/CIDRMatcher"}
-brotli = "3"
 gentian = "0.1"
 h2 = "0.3"
+hkdf = "0.12"
+hmac = "0.12"
 http = "0.2"
-hyper = {version = "0.14", features = ["http1", "http2", "client", "server"]}
+hyper = { version = "0.14", features = ["http1", "http2", "client", "server"] }
 libc = "0.2"
+log = "0.4"
+md-5 = "0.10"
 once_cell = "1"
+prost = { version = "0.13", optional = true }
+protobuf = { version = "=3.5.0", features = ["with-bytes"] }
+rand = { version = "0.8", features = ["small_rng"] }
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+sha-1 = "0.10"
+sha2 = "0.10"
+socket2 = { version = "0.5", features = ["all"] }
+spin = "0.9"
+tokio = { version = "1", features = ["net", "io-util", "macros", "sync"] }
+tokio-boring = { version = "4", optional = true }
+tokio-tungstenite = { version = "0.23", features = [
+    "stream",
+    "handshake",
+], default-features = false }
+tokio-util = { version = "0.7", features = ["codec", "net"] }
+toml = "0.8"
+tonic = { version = "0.12", optional = true }
 tower = "0.4"
+uuid = { version = "1", features = ["std", "v4"] }
+
+[[bin]]
+name = "v2ray-rs"
+path = "src/bin/main.rs"
 
 [profile.release]
 codegen-units = 1
@@ -73,7 +84,7 @@ strip = true
 
 [build-dependencies]
 protobuf-codegen = "3"
-tonic-build = "0.11"
+tonic-build = "0.12"
 
 [target.'cfg(windows)'.dependencies]
 schannel = "0.1"

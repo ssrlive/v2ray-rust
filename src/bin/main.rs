@@ -1,12 +1,7 @@
-use crate::config::Config;
 use clap::{Arg, ArgAction, Command};
 use log::info;
 use std::io;
-
-mod api;
-mod common;
-mod config;
-mod proxy;
+use v2ray_rust::config::Config;
 
 //#[global_allocator]
 //static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;

@@ -1,3 +1,5 @@
+#![cfg(feature = "enable_useless")]
+
 use crate::common::new_error;
 use crate::debug_log;
 use crate::proxy::{

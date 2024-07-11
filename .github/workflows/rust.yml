@@ -168,7 +168,7 @@ jobs:
         cat geoip.dat.sha256sum | sha256sum --check --status
         mv dlc.dat ./release-tmp/geosite.dat
         mv geoip.dat ./release-tmp/
-        cp ./target/${{matrix.config.target_triple}}/release/v2ray-rust ./release-tmp/
+        cp ./target/${{matrix.config.target_triple}}/release/v2ray-rs ./release-tmp/
     
     
     - name: Upload a Build Artifact

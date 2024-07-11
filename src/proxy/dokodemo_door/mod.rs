@@ -2,11 +2,9 @@ use crate::common::new_error;
 use crate::config::DokodemoDoor;
 use crate::proxy::Address;
 use libc::c_int;
-use std::mem;
 use std::net::{SocketAddr, TcpListener};
-#[cfg(unix)]
-use std::os::unix::io::AsRawFd;
 
+#[cfg(unix)]
 macro_rules! syscall {
     ($fn: ident ( $($arg: expr),* $(,)* ) ) => {{
         #[allow(unused_unsafe)]
@@ -19,6 +17,7 @@ macro_rules! syscall {
     }};
 }
 
+#[allow(dead_code)]
 #[cfg(unix)]
 pub(crate) unsafe fn setsockopt<T>(
     fd: c_int,
@@ -32,7 +31,7 @@ pub(crate) unsafe fn setsockopt<T>(
         opt,
         val,
         payload,
-        mem::size_of::<T>() as libc::socklen_t,
+        std::mem::size_of::<T>() as libc::socklen_t,
     ))
     .map(|_| ())
 }
@@ -56,6 +55,7 @@ pub(crate) fn build_dokodemo_door_listener(
         socket.set_reuse_address(true)?;
         if domain == socket2::Domain::IPV6 {
             unsafe {
+                use std::os::unix::io::AsRawFd;
                 setsockopt(
                     socket.as_raw_fd(),
                     libc::SOL_IPV6,

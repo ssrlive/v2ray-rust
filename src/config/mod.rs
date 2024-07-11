@@ -1,5 +1,7 @@
 mod deserialize;
+#[cfg(feature = "enable_useless")]
 mod geoip;
+#[cfg(feature = "enable_useless")]
 mod geosite;
 mod ip_trie;
 mod route;
@@ -14,11 +16,13 @@ pub use to_chainable_builder::ToChainableStreamBuilder;
 use crate::common::new_error;
 use crate::config::deserialize::{
     default_backlog, default_grpc_path, default_http2_method, default_random_string,
-    default_relay_buffer_size, default_true, default_v2ray_geoip_path, default_v2ray_geosite_path,
+    default_relay_buffer_size, default_v2ray_geoip_path, default_v2ray_geosite_path,
     from_str_to_address, from_str_to_cipher_kind, from_str_to_grpc_path, from_str_to_http_method,
-    from_str_to_option_address, from_str_to_path, from_str_to_security_num, from_str_to_sni,
-    from_str_to_uuid, from_str_to_ws_uri, EarlyDataUri,
+    from_str_to_option_address, from_str_to_path, from_str_to_security_num, from_str_to_uuid,
+    from_str_to_ws_uri, EarlyDataUri,
 };
+#[cfg(feature = "enable_useless")]
+use crate::config::deserialize::{default_true, from_str_to_sni};
 use crate::proxy::shadowsocks::aead_helper::CipherKind;
 use crate::proxy::shadowsocks::context::{BloomContext, SharedBloomContext};
 
@@ -61,6 +65,7 @@ struct TrojanConfig {
     tag: String,
 }
 
+#[cfg(feature = "enable_useless")]
 #[derive(Deserialize, Clone)]
 struct TlsConfig {
     #[serde(deserialize_with = "from_str_to_sni")]
@@ -219,8 +224,11 @@ pub struct Config {
     backlog: u32,
     #[serde(default)]
     ss: Vec<ShadowsocksConfig>,
+
+    #[cfg(feature = "enable_useless")]
     #[serde(default)]
     tls: Vec<TlsConfig>,
+
     #[serde(default)]
     vmess: Vec<VmessConfig>,
     #[serde(default)]
@@ -260,6 +268,7 @@ impl std::ops::Index<(ProtocolType, usize)> for Config {
     fn index(&self, index: (ProtocolType, usize)) -> &Self::Output {
         match index.0 {
             ProtocolType::SS => &self.ss[index.1],
+            #[cfg(feature = "enable_useless")]
             ProtocolType::Tls => &self.tls[index.1],
             ProtocolType::Vmess => &self.vmess[index.1],
             ProtocolType::WS => &self.ws[index.1],
@@ -298,6 +307,7 @@ impl Config {
         // tag->(protocol idx, idx of protocol vec)
         let mut config_map: HashMap<&'a str, (ProtocolType, usize)> = HashMap::new();
         insert_config_map!(self.ss, config_map);
+        #[cfg(feature = "enable_useless")]
         insert_config_map!(self.tls, config_map);
         insert_config_map!(self.vmess, config_map);
         insert_config_map!(self.ws, config_map);

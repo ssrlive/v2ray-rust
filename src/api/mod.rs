@@ -1,3 +1,5 @@
+#![cfg(feature = "enable_useless")]
+
 use crate::api::v2ray_rust_api::{
     GetLatencyRequest, GetLatencyResponse, GetStatsRequest, GetStatsResponse,
 };

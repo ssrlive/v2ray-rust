@@ -203,6 +203,7 @@ where
 }
 
 // adapted from webpki::DnsNameRef
+#[allow(dead_code)]
 fn is_valid_dns_id(hostname: &[u8]) -> bool {
     // https://blogs.msdn.microsoft.com/oldnewthing/20120412-00/?p=7873/
     if hostname.len() > 253 {
@@ -287,6 +288,7 @@ fn is_valid_dns_id(hostname: &[u8]) -> bool {
     true
 }
 
+#[allow(dead_code)]
 pub(super) fn from_str_to_sni<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
@@ -307,6 +309,7 @@ pub(super) fn default_relay_buffer_size() -> usize {
 pub(super) fn default_backlog() -> u32 {
     4096
 }
+#[allow(dead_code)]
 pub(super) fn default_true() -> bool {
     true
 }

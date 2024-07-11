@@ -1,3 +1,5 @@
+#![cfg(feature = "enable_useless")]
+
 use crate::common::new_error;
 use boring::x509::X509;
 use security_framework::trust_settings::{Domain, TrustSettings, TrustSettingsForCertificate};

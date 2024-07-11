@@ -5,9 +5,15 @@ use domain_matcher::mph::MphMatcher;
 use domain_matcher::DomainMatcher;
 use domain_matcher::MatchType;
 
-use crate::config::{geoip, geosite, DomainRoutingRules, GeoIpRules, GeoSiteRules, IpRoutingRules};
-use crate::debug_log;
+#[cfg(feature = "enable_useless")]
+use crate::{
+    config::{geoip, geosite},
+    debug_log,
+};
+#[cfg(feature = "enable_useless")]
 use bytes::Buf;
+
+use crate::config::{DomainRoutingRules, GeoIpRules, GeoSiteRules, IpRoutingRules};
 use cidr_utils::cidr::IpCidr;
 use protobuf::CodedInputStream;
 
@@ -142,14 +148,15 @@ impl RouterBuilder {
             }
         };
         let mut is = CodedInputStream::new(&mut f);
+        #[cfg(feature = "enable_useless")]
         let mut domain: geosite::Domain;
         let mut site_group_tag = String::new();
-        let mut skip_field = None;
+        let mut _skip_field = None;
         while !is.eof()? {
             is.read_raw_varint32()?;
             is.read_raw_varint64()?;
             while !is.eof().unwrap() {
-                let (field_number, wire_type) =
+                let (field_number, _wire_type) =
                     to_field_num_and_wire_type(is.read_raw_varint32()?)?;
                 match field_number {
                     1 => {
@@ -159,16 +166,17 @@ impl RouterBuilder {
                             continue;
                         }
                         is.read_string_into(&mut site_group_tag)?;
-                        skip_field = geosite_tags.get(site_group_tag.as_str());
+                        _skip_field = geosite_tags.get(site_group_tag.as_str());
                     }
+                    #[cfg(feature = "enable_useless")]
                     2 => {
-                        if skip_field.is_none() {
-                            is.skip_field(wire_type)?;
+                        if _skip_field.is_none() {
+                            is.skip_field(_wire_type)?;
                             continue;
                         }
                         domain = is.read_message()?;
                         {
-                            if let Some(outbound_tag) = skip_field {
+                            if let Some(outbound_tag) = _skip_field {
                                 let matcher = self.domain_matchers.get_mut(*outbound_tag).unwrap();
                                 match domain.type_() {
                                     geosite::domain::Type::Plain => matcher
@@ -193,7 +201,7 @@ impl RouterBuilder {
                         }
                     }
                     _ => {
-                        // is.skip_field(wire_type);
+                        // is.skip_field(_wire_type);
                     }
                 }
             }
@@ -205,7 +213,7 @@ impl RouterBuilder {
     pub fn read_geoip_file<P: AsRef<Path>>(
         &mut self,
         file_name: P,
-        outbound_tag: &str,
+        _outbound_tag: &str,
         geoip_tags: HashSet<String>,
     ) -> io::Result<()> {
         let mut tags = HashSet::new();
@@ -224,15 +232,16 @@ impl RouterBuilder {
             }
         };
         let mut is = CodedInputStream::new(&mut f);
+        #[cfg(feature = "enable_useless")]
         let mut cidr = geoip::CIDR::new();
         let mut country_code = String::new();
-        let mut skip_field: bool = false;
+        let mut _skip_field: bool = false;
         while !is.eof()? {
             is.read_raw_varint32()?;
             // assert_eq!(field_number, 1);
             is.read_raw_varint64()?;
             while !is.eof()? {
-                let (field_number, wire_type) =
+                let (field_number, _wire_type) =
                     to_field_num_and_wire_type(is.read_raw_varint32()?)?;
                 match field_number {
                     1 => {
@@ -242,11 +251,12 @@ impl RouterBuilder {
                             continue;
                         }
                         country_code = is.read_string()?.to_uppercase();
-                        skip_field = !geoip_tags.contains(country_code.as_str());
+                        _skip_field = !geoip_tags.contains(country_code.as_str());
                     }
+                    #[cfg(feature = "enable_useless")]
                     2 => {
-                        if skip_field {
-                            is.skip_field(wire_type)?;
+                        if _skip_field {
+                            is.skip_field(_wire_type)?;
                             continue;
                         }
                         is.merge_message(&mut cidr)?;
@@ -257,7 +267,7 @@ impl RouterBuilder {
                                 self.ip_matcher.put_v6(
                                     ip6,
                                     cidr.prefix as u8,
-                                    outbound_tag.to_string(),
+                                    _outbound_tag.to_string(),
                                 );
                             }
                             4 => {
@@ -274,7 +284,7 @@ impl RouterBuilder {
                                 self.ip_matcher.put_v4(
                                     ip4,
                                     cidr.prefix as u8,
-                                    outbound_tag.to_string(),
+                                    _outbound_tag.to_string(),
                                 );
                             }
                             _ => {
