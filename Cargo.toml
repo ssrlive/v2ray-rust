@@ -40,7 +40,6 @@ futures-util = { version = "0.3", default-features = false, features = [
     "sink",
     "std",
 ] }
-generic-array = "0.14"
 gentian = "0.1"
 h2 = "0.3"
 hkdf = "0.12"

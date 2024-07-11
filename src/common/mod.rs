@@ -1,6 +1,5 @@
 use crate::debug_log;
 use aes::{cipher::BlockDecrypt, cipher::BlockEncrypt, cipher::KeyInit, Aes128};
-use generic_array::GenericArray;
 use sha2::Digest;
 use sha2::{Sha224, Sha256};
 use std::io;
@@ -31,20 +30,17 @@ pub trait BlockCipherHelper {
 impl BlockCipherHelper for Aes128 {
     #[inline]
     fn new_with_slice(key: &[u8]) -> Self {
-        let key = GenericArray::from_slice(key);
-        Aes128::new(key)
+        Aes128::new(key.into())
     }
 
     #[inline]
     fn encrypt_with_slice(&self, block: &mut [u8]) {
-        let key = GenericArray::from_mut_slice(block);
-        self.encrypt_block(key)
+        self.encrypt_block(block.into())
     }
 
     #[inline]
     fn decrypt_with_slice(&self, block: &mut [u8]) {
-        let key = GenericArray::from_mut_slice(block);
-        self.decrypt_block(key)
+        self.decrypt_block(block.into())
     }
 }
 
