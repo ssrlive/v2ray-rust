@@ -14,7 +14,7 @@ use crate::{
 use bytes::Buf;
 
 use crate::config::{DomainRoutingRules, GeoIpRules, GeoSiteRules, IpRoutingRules};
-use cidr_utils::cidr::IpCidr;
+use cidr::IpCidr;
 use protobuf::CodedInputStream;
 
 use regex::{RegexSet, RegexSetBuilder};
@@ -73,21 +73,14 @@ impl RouterBuilder {
 
     pub fn add_cidr_rules(&mut self, outbound_tag: &str, ip_rules: &[String]) {
         for rule in ip_rules {
+            use std::str::FromStr;
             if let Ok(cidr) = IpCidr::from_str(rule) {
                 match cidr {
                     IpCidr::V4(v4) => {
-                        self.ip_matcher.put_v4(
-                            v4.get_prefix(),
-                            v4.get_bits(),
-                            outbound_tag.to_string(),
-                        );
+                        self.ip_matcher.put_v4(v4, outbound_tag.to_string());
                     }
                     IpCidr::V6(v6) => {
-                        self.ip_matcher.put_v6(
-                            v6.get_prefix(),
-                            v6.get_bits(),
-                            outbound_tag.to_string(),
-                        );
+                        self.ip_matcher.put_v6(v6, outbound_tag.to_string());
                     }
                 }
             } else {
@@ -263,12 +256,9 @@ impl RouterBuilder {
                         let len = cidr.ip.len();
                         match len {
                             16 => {
-                                let ip6 = cidr.ip.get_u128();
-                                self.ip_matcher.put_v6(
-                                    ip6,
-                                    cidr.prefix as u8,
-                                    _outbound_tag.to_string(),
-                                );
+                                let addr = std::net::Ipv6Addr::from(cidr.ip.get_u128());
+                                let cidr = cidr::Ipv6Cidr::new(addr, cidr.prefix as u8).unwrap();
+                                self.ip_matcher.put_v6(cidr, _outbound_tag.to_string());
                             }
                             4 => {
                                 // debug_log!(
@@ -280,12 +270,9 @@ impl RouterBuilder {
                                 //     cidr.ip[3],
                                 //     cidr.prefix
                                 // );
-                                let ip4 = cidr.ip.get_u32();
-                                self.ip_matcher.put_v4(
-                                    ip4,
-                                    cidr.prefix as u8,
-                                    _outbound_tag.to_string(),
-                                );
+                                let addr = std::net::Ipv4Addr::from(cidr.ip.get_u32());
+                                let cidr = cidr::Ipv4Cidr::new(addr, cidr.prefix as u8).unwrap();
+                                self.ip_matcher.put_v4(cidr, _outbound_tag.to_string());
                             }
                             _ => {
                                 debug_log!("invalid ip length detected");

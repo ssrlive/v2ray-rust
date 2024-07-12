@@ -1,10 +1,3 @@
-fn normalize6(ip: u128, prefix: u8) -> u128 {
-    ip >> (128 - prefix) << (128 - prefix)
-}
-fn normalize(ip: u32, prefix: u8) -> u32 {
-    ip >> (32 - prefix) << (32 - prefix)
-}
-
 trait TrieNode {
     fn nullptr() -> Self;
 }
@@ -142,15 +135,15 @@ impl GeoIPMatcher {
         };
     }
 
-    pub fn put_v6(&mut self, ip6: u128, prefix: u8, outbound: String) {
+    pub fn put_v6(&mut self, ip6_cidr: cidr::Ipv6Cidr, outbound: String) {
         let pos = self.get_outbound_pos(outbound);
-        let ip6 = normalize6(ip6, prefix);
-        self.trie6.put(ip6, prefix, pos as u32);
+        let key = ip6_cidr.first_address().into();
+        self.trie6.put(key, ip6_cidr.network_length(), pos as u32);
     }
-    pub fn put_v4(&mut self, ip4: u32, prefix: u8, outbound: String) {
+    pub fn put_v4(&mut self, ip4_cidr: cidr::Ipv4Cidr, outbound: String) {
         let pos = self.get_outbound_pos(outbound);
-        let ip4 = normalize(ip4, prefix);
-        self.trie4.put(ip4, prefix, pos as u32);
+        let key = ip4_cidr.first_address().into();
+        self.trie4.put(key, ip4_cidr.network_length(), pos as u32);
     }
 
     pub fn build(&mut self) {}

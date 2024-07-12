@@ -30,7 +30,7 @@ brotli = { version = "6", features = ["ffi-api"] }
 byte_string = "1"
 bytes = "1"
 chacha20poly1305 = "0.10"
-cidr-utils = "0.5"
+cidr = "0.2"
 clap = "4"
 crc32fast = "1"
 domain_matcher = { git = "https://github.com/darsvador/DomainMatcher", rev = "8df5a46746d90900d" }
