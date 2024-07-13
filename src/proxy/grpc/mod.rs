@@ -10,7 +10,6 @@ use bytes::{BufMut, Bytes, BytesMut};
 use futures_util::ready;
 use h2::{RecvStream, SendStream};
 use http::{Request, Uri, Version};
-use log::error;
 #[cfg(feature = "enable_useless")]
 use prost::encoding::{decode_varint, encode_varint};
 
@@ -57,7 +56,7 @@ macro_rules! grpc_build_tcp_impl {
         let (resp, send_stream) = client.send_request(req, false).map_err(new_error)?;
         tokio::spawn(async move {
             if let Err(e) = h2.await {
-                error!("http2 got err:{:?}", e);
+                log::error!("http2 got err:{:?}", e);
             }
         });
         return Ok(Box::new(GrpcStream::new(resp, send_stream)))

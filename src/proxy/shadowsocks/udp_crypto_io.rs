@@ -34,7 +34,6 @@ use crate::proxy::{Address, ProxyUdpStream, UdpRead, UdpWrite};
 use bytes::{BufMut, Bytes, BytesMut};
 use futures_util::ready;
 use gentian::gentian;
-use log::trace;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 /// Encrypt payload into ShadowSocks UDP encrypted packet
@@ -77,7 +76,7 @@ fn encrypt_payload_aead(
 
     if salt_len > 0 {
         context.generate_nonce(salt, false);
-        trace!("UDP packet generated aead salt {:?}", ByteStr::new(salt));
+        log::trace!("UDP packet generated aead salt {:?}", ByteStr::new(salt));
     }
 
     let mut cipher = AeadCipher::new(method, key, salt);
@@ -135,7 +134,7 @@ fn decrypt_payload_aead(
     let (salt, data) = payload.split_at_mut(salt_len);
     // context.check_nonce_replay(salt)?;
 
-    trace!("UDP packet got AEAD salt {:?}", ByteStr::new(salt));
+    log::trace!("UDP packet got AEAD salt {:?}", ByteStr::new(salt));
 
     let tag_len = method.tag_len();
     let mut cipher = AeadCipher::new(method, key, salt);

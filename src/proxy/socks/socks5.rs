@@ -1,29 +1,21 @@
 use crate::common::{new_error, HW_BUFFER_SIZE, LW_BUFFER_SIZE};
 use crate::config::Router;
+use crate::debug_log;
 use crate::proxy::socks::{auth_methods, response_code, socks_command, SOCKS_VERSION};
+use crate::proxy::udp::split_ext;
+use crate::proxy::Address;
 use crate::proxy::ChainStreamBuilder;
 use actix_rt::task::JoinHandle;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use futures_util::SinkExt;
 use futures_util::StreamExt;
-use log::debug;
-
 use std::collections::HashMap;
-
 use std::io;
 use std::io::Error;
-
 use std::net::{IpAddr, SocketAddr};
-
 use std::sync::Arc;
-
-use crate::debug_log;
-use crate::proxy::udp::split_ext;
-use crate::proxy::Address;
-
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
-
 use tokio_util::codec::{Decoder, Encoder};
 use tokio_util::udp::UdpFramed;
 
@@ -321,7 +313,7 @@ impl Socks5UdpDatagram {
         });
         let mut buf = [0u8; 0x10];
         let _ = stream.read(&mut buf).await;
-        debug!("shutting down udp session...");
+        log::debug!("shutting down udp session...");
         local_send_handle.abort();
         local_recv_handle.abort();
         Ok(())

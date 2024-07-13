@@ -9,7 +9,6 @@ use crate::proxy::socks::SOCKS_VERSION;
 use crate::proxy::{Address, ChainStreamBuilder};
 use actix_server::Server;
 use actix_service::fn_service;
-use log::info;
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::io;
@@ -95,7 +94,7 @@ impl ConfigServerBuilder {
             let _api_inner_map = (&self.inner_map).clone();
             actix_rt::System::new().block_on(async move {
                 if enable_api_server {
-                    info!("api server listening on: {}", self.api_server_addr);
+                    log::info!("api server listening on: {}", self.api_server_addr);
                     #[cfg(feature = "enable_useless")]
                     tokio::spawn(async move {
                         let api_server = ApiServer::new_server();
@@ -110,7 +109,7 @@ impl ConfigServerBuilder {
                 }
                 let mut server = Server::build();
                 server = server.backlog(self.backlog);
-                info!("backlog is:{}", self.backlog);
+                log::info!("backlog is:{}", self.backlog);
                 for door in self.dokodemo.iter_mut() {
                     let inner_map = inner_map.clone();
                     let router = router.clone();
@@ -131,9 +130,10 @@ impl ConfigServerBuilder {
                                     return relay(io, out_stream, self.relay_buffer_size).await;
                                 }
                                 let ob = router.match_socket_addr(&dokodemo_door_addr);
-                                info!(
+                                log::info!(
                                     "routing dokodemo addr {} to outbound:{}",
-                                    dokodemo_door_addr, ob
+                                    dokodemo_door_addr,
+                                    ob
                                 );
                                 let stream_builder = inner_map.get(ob).unwrap();
                                 let out_stream =
@@ -222,7 +222,7 @@ impl ConfigServerBuilder {
                                     return Ok(());
                                 }
                                 let ob = router.match_addr(&x.1);
-                                info!("routing {} to outbound:{}", x.1, ob);
+                                log::info!("routing {} to outbound:{}", x.1, ob);
                                 let stream_builder = inner_map.get(ob).unwrap();
                                 let out_stream = stream_builder.build_tcp(x.1).await?;
                                 if enable_api_server {
@@ -252,9 +252,9 @@ impl ConfigServerBuilder {
                 }
                 let res = server.run().await;
                 if let Err(ref e) = res {
-                    info!("v2ray-rust stopped: {}", e);
+                    log::info!("v2ray-rust stopped: {}", e);
                 } else {
-                    info!("v2ray-rust stopped");
+                    log::info!("v2ray-rust stopped");
                 }
                 res
             })

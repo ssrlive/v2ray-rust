@@ -8,7 +8,6 @@ use std::task::{Context, Poll};
 
 use bytes::{BufMut, BytesMut};
 use futures_util::ready;
-use log::info;
 
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
@@ -111,7 +110,7 @@ where
             _ = copy_with_capacity_and_counter(&mut inbound_r, &mut outbound_w,&mut up,LW_BUFFER_SIZE*relay_buffer_size)=>{
             }
     }
-    info!("downloaded bytes:{}, uploaded bytes:{}", down, up);
+    log::info!("downloaded bytes:{}, uploaded bytes:{}", down, up);
     Ok(())
 }
 pub async fn relay_with_atomic_counter<T1, T2>(

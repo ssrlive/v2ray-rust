@@ -1,5 +1,4 @@
 use clap::{Arg, ArgAction, Command};
-use log::info;
 use std::io;
 use v2ray_rust::config::Config;
 
@@ -34,7 +33,7 @@ fn main() -> io::Result<()> {
     let filename = matches.get_one::<String>("config").unwrap().to_string();
     if matches.get_flag("validate") {
         let _ = Config::read_from_file(filename)?;
-        info!("A valid config file.");
+        log::info!("A valid config file.");
         return Ok(());
     }
     let c = Config::read_from_file(filename)?;

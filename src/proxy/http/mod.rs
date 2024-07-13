@@ -16,7 +16,6 @@ use crate::proxy::{Address, ChainStreamBuilder};
 use hyper::service::service_fn;
 use hyper::upgrade::Upgraded;
 use hyper::{Body, Client, Method, Request, Response};
-use log::info;
 
 use self::connector::Connector;
 
@@ -175,7 +174,7 @@ async fn tunnel(
     // Connect to remote server
     let ob = router.match_addr(&addr);
     let stream_builder = inner_map.get(ob).unwrap();
-    info!("routing {} to outbound:{}", addr, ob);
+    log::info!("routing {} to outbound:{}", addr, ob);
     if stream_builder.is_blackhole() {
         return Ok(());
     }

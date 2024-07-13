@@ -7,7 +7,6 @@ use bytes::{Bytes, BytesMut};
 use futures_util::ready;
 use h2::{RecvStream, SendStream};
 use http::{Request, Uri, Version};
-use log::error;
 use rand::random;
 use std::collections::HashMap;
 use std::io;
@@ -70,7 +69,7 @@ macro_rules! http2_build_tcp_impl {
         let (resp, send_stream) = client.send_request(req, false).map_err(new_error)?;
         tokio::spawn(async move {
             if let Err(e) = h2.await {
-                error!("http2 got err:{:?}", e);
+                log::error!("http2 got err:{:?}", e);
             }
         });
         let recv_stream = resp.await.map_err(new_error)?.into_body();
