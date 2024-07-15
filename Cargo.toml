@@ -9,7 +9,7 @@ version = "0.1.0"
 [features]
 default = []
 strict-vmess-udp = []
-enable_useless = ["boring", "boring-sys", "prost", "tokio-boring", "tonic"]
+enable-useless = ["boring", "boring-sys", "prost", "tokio-boring", "tonic"]
 
 [dependencies]
 actix-rt = "2"

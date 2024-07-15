@@ -1,4 +1,4 @@
-#[cfg(feature = "enable_useless")]
+#[cfg(feature = "enable-useless")]
 use crate::config::TlsConfig;
 use crate::config::{
     BlackHoleConfig, DirectConfig, GrpcConfig, Http2Config, ShadowsocksConfig, SimpleObfsConfig,
@@ -10,7 +10,7 @@ use crate::proxy::grpc::GrpcStreamBuilder;
 use crate::proxy::h2::Http2StreamBuilder;
 use crate::proxy::shadowsocks::ShadowsocksBuilder;
 use crate::proxy::simpleobfs::SimpleObfsStreamBuilder;
-#[cfg(feature = "enable_useless")]
+#[cfg(feature = "enable-useless")]
 use crate::proxy::tls::TlsStreamBuilder;
 use crate::proxy::trojan::TrojanStreamBuilder;
 use crate::proxy::vmess::vmess_option::VmessOption;
@@ -94,7 +94,7 @@ impl ToChainableStreamBuilder for TrojanConfig {
     }
 }
 
-#[cfg(feature = "enable_useless")]
+#[cfg(feature = "enable-useless")]
 impl ToChainableStreamBuilder for TlsConfig {
     fn to_chainable_stream_builder(
         &self,

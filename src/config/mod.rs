@@ -1,7 +1,7 @@
 mod deserialize;
-#[cfg(feature = "enable_useless")]
+#[cfg(feature = "enable-useless")]
 mod geoip;
-#[cfg(feature = "enable_useless")]
+#[cfg(feature = "enable-useless")]
 mod geosite;
 mod ip_trie;
 mod route;
@@ -21,7 +21,7 @@ use crate::config::deserialize::{
     from_str_to_option_address, from_str_to_path, from_str_to_security_num, from_str_to_uuid,
     from_str_to_ws_uri, EarlyDataUri,
 };
-#[cfg(feature = "enable_useless")]
+#[cfg(feature = "enable-useless")]
 use crate::config::deserialize::{default_true, from_str_to_sni};
 use crate::proxy::shadowsocks::aead_helper::CipherKind;
 use crate::proxy::shadowsocks::context::{BloomContext, SharedBloomContext};
@@ -65,7 +65,7 @@ struct TrojanConfig {
     tag: String,
 }
 
-#[cfg(feature = "enable_useless")]
+#[cfg(feature = "enable-useless")]
 #[derive(Deserialize, Clone)]
 struct TlsConfig {
     #[serde(deserialize_with = "from_str_to_sni")]
@@ -225,7 +225,7 @@ pub struct Config {
     #[serde(default)]
     ss: Vec<ShadowsocksConfig>,
 
-    #[cfg(feature = "enable_useless")]
+    #[cfg(feature = "enable-useless")]
     #[serde(default)]
     tls: Vec<TlsConfig>,
 
@@ -268,7 +268,7 @@ impl std::ops::Index<(ProtocolType, usize)> for Config {
     fn index(&self, index: (ProtocolType, usize)) -> &Self::Output {
         match index.0 {
             ProtocolType::SS => &self.ss[index.1],
-            #[cfg(feature = "enable_useless")]
+            #[cfg(feature = "enable-useless")]
             ProtocolType::Tls => &self.tls[index.1],
             ProtocolType::Vmess => &self.vmess[index.1],
             ProtocolType::WS => &self.ws[index.1],
@@ -307,7 +307,7 @@ impl Config {
         // tag->(protocol idx, idx of protocol vec)
         let mut config_map: HashMap<&'a str, (ProtocolType, usize)> = HashMap::new();
         insert_config_map!(self.ss, config_map);
-        #[cfg(feature = "enable_useless")]
+        #[cfg(feature = "enable-useless")]
         insert_config_map!(self.tls, config_map);
         insert_config_map!(self.vmess, config_map);
         insert_config_map!(self.ws, config_map);

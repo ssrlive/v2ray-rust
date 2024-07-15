@@ -7,5 +7,5 @@ mod unix;
 mod windows;
 // todo: provide Mozilla's root certs as optional
 
-#[cfg(feature = "enable_useless")]
+#[cfg(feature = "enable-useless")]
 pub use tls_stream::TlsStreamBuilder;

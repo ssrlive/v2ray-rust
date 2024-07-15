@@ -5,12 +5,12 @@ use domain_matcher::mph::MphMatcher;
 use domain_matcher::DomainMatcher;
 use domain_matcher::MatchType;
 
-#[cfg(feature = "enable_useless")]
+#[cfg(feature = "enable-useless")]
 use crate::{
     config::{geoip, geosite},
     debug_log,
 };
-#[cfg(feature = "enable_useless")]
+#[cfg(feature = "enable-useless")]
 use bytes::Buf;
 
 use crate::config::{DomainRoutingRules, GeoIpRules, GeoSiteRules, IpRoutingRules};
@@ -141,7 +141,7 @@ impl RouterBuilder {
             }
         };
         let mut is = CodedInputStream::new(&mut f);
-        #[cfg(feature = "enable_useless")]
+        #[cfg(feature = "enable-useless")]
         let mut domain: geosite::Domain;
         let mut site_group_tag = String::new();
         let mut _skip_field = None;
@@ -161,7 +161,7 @@ impl RouterBuilder {
                         is.read_string_into(&mut site_group_tag)?;
                         _skip_field = geosite_tags.get(site_group_tag.as_str());
                     }
-                    #[cfg(feature = "enable_useless")]
+                    #[cfg(feature = "enable-useless")]
                     2 => {
                         if _skip_field.is_none() {
                             is.skip_field(_wire_type)?;
@@ -225,7 +225,7 @@ impl RouterBuilder {
             }
         };
         let mut is = CodedInputStream::new(&mut f);
-        #[cfg(feature = "enable_useless")]
+        #[cfg(feature = "enable-useless")]
         let mut cidr = geoip::CIDR::new();
         let mut country_code = String::new();
         let mut _skip_field: bool = false;
@@ -246,7 +246,7 @@ impl RouterBuilder {
                         country_code = is.read_string()?.to_uppercase();
                         _skip_field = !geoip_tags.contains(country_code.as_str());
                     }
-                    #[cfg(feature = "enable_useless")]
+                    #[cfg(feature = "enable-useless")]
                     2 => {
                         if _skip_field {
                             is.skip_field(_wire_type)?;

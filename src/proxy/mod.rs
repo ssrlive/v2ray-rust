@@ -64,7 +64,7 @@ macro_rules! debug_log {
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub enum ProtocolType {
     SS,
-    #[cfg(feature = "enable_useless")]
+    #[cfg(feature = "enable-useless")]
     Tls,
     Vmess,
     Grpc,

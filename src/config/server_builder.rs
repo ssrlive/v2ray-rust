@@ -1,4 +1,4 @@
-#[cfg(feature = "enable_useless")]
+#[cfg(feature = "enable-useless")]
 use crate::api::{ApiLatencyServer, ApiServer};
 use crate::common::net::{relay, relay_with_atomic_counter};
 use crate::config::{DokodemoDoor, Inbounds, Router};
@@ -95,7 +95,7 @@ impl ConfigServerBuilder {
             actix_rt::System::new().block_on(async move {
                 if enable_api_server {
                     log::info!("api server listening on: {}", self.api_server_addr);
-                    #[cfg(feature = "enable_useless")]
+                    #[cfg(feature = "enable-useless")]
                     tokio::spawn(async move {
                         let api_server = ApiServer::new_server();
                         let api_latency_server = ApiLatencyServer::new_server(_api_inner_map);

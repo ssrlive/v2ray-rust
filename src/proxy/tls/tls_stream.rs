@@ -1,4 +1,4 @@
-#![cfg(feature = "enable_useless")]
+#![cfg(feature = "enable-useless")]
 
 use crate::common::new_error;
 use crate::debug_log;
