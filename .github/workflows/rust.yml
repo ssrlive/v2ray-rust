@@ -69,7 +69,7 @@ jobs:
           
     steps:
     - name: Set up NASM
-      uses: ilammy/setup-nasm@v1.4.0
+      uses: ilammy/setup-nasm@v1.5.1
 
     - uses: actions/checkout@v4
 
@@ -84,7 +84,7 @@ jobs:
     - run: rustup target add ${{ matrix.config.target_triple }}
 
     - name: Install Protoc
-      uses: arduino/setup-protoc@v2
+      uses: arduino/setup-protoc@v3
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -93,7 +93,7 @@ jobs:
       run: echo "version=$(rustc --version)" >> $GITHUB_OUTPUT
 
     - name: Cache cargo index
-      uses: actions/cache@v3.3.2
+      uses: actions/cache@v4.0.2
       with:
         path: ~/.cargo/registry/index
         key: index-${{ runner.os }}-${{ github.run_number }}
@@ -104,7 +104,7 @@ jobs:
           #      run: cargo generate-lockfile
       
     - name: Cache cargo registry
-      uses: actions/cache@v3.3.2
+      uses: actions/cache@v4.0.2
       with:
         path: ~/.cargo/registry/cache
         key: registry-${{ runner.os }}-${{ steps.rust-version.outputs.version }}-${{ hashFiles('Cargo.lock') }}
@@ -113,7 +113,7 @@ jobs:
       run: cargo fetch
     
     - name: Cache target directory
-      uses: actions/cache@v3.3.2
+      uses: actions/cache@v4.0.2
       with:
         path: target
         key: cache-target-${{ runner.os }}-${{ steps.rust-version.outputs.version }}-${{ hashFiles('Cargo.lock') }}
@@ -129,28 +129,28 @@ jobs:
       run: |
         cargo test --release --target=${{matrix.config.target_triple}} 
         
-    - uses: robinraju/release-downloader@v1.8
+    - uses: robinraju/release-downloader@v1.11
       with:
         repository: "v2fly/geoip"
         latest: true
         fileName: "geoip.dat"
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - uses: robinraju/release-downloader@v1.8
+    - uses: robinraju/release-downloader@v1.11
       with:
         repository: "v2fly/geoip"
         latest: true
         fileName: "geoip.dat.sha256sum"
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - uses: robinraju/release-downloader@v1.8
+    - uses: robinraju/release-downloader@v1.11
       with:
         repository: "v2fly/domain-list-community"
         latest: true
         fileName: "dlc.dat.sha256sum"
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - uses: robinraju/release-downloader@v1.8
+    - uses: robinraju/release-downloader@v1.11
       with:
         repository: "v2fly/domain-list-community"
         latest: true
@@ -172,7 +172,7 @@ jobs:
     
     
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: v2ray-rust-${{ github.sha }}-${{ matrix.config.artifact }}.7z
         path: release-tmp
