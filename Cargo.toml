@@ -68,7 +68,7 @@ tokio-tungstenite = { version = "0.23", features = [
 tokio-util = { version = "0.7", features = ["codec", "net"] }
 toml = "0.8"
 tonic = { version = "0.12", optional = true }
-tower = "0.4"
+tower = "0.5"
 uuid = { version = "1", features = ["std", "v4"] }
 
 [[bin]]
