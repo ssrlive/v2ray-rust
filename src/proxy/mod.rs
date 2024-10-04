@@ -162,6 +162,12 @@ pub struct ChainStreamBuilder {
     is_black_hole: bool,
 }
 
+impl Default for ChainStreamBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ChainStreamBuilder {
     pub fn new() -> ChainStreamBuilder {
         ChainStreamBuilder {
@@ -218,7 +224,7 @@ impl ChainStreamBuilder {
         if self.is_black_hole {
             return Err(new_error("block connection"));
         }
-        return if let Some(remote_addr) = &self.remote_addr {
+        if let Some(remote_addr) = &self.remote_addr {
             let outer_stream = remote_addr.connect_tcp().await?;
             let mut outer_stream: Box<dyn ProxySteam> = Box::new(outer_stream);
             for b in self.builders.iter() {
@@ -244,7 +250,7 @@ impl ChainStreamBuilder {
                     .await?;
             }
             Ok(outer_stream)
-        };
+        }
     }
 
     /// if builder in proxy chain is UoT, then before uot builder all builder must build tcp inside

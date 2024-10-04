@@ -294,21 +294,21 @@ impl Address {
     }
 
     pub async fn connect_tcp(&self) -> io::Result<TcpStream> {
-        return match self {
+        match self {
             Address::SocketAddress(addr) => TcpStream::connect(addr).await,
             Address::DomainNameAddress(host, port) => {
                 TcpStream::connect((host.as_str(), *port)).await
             }
-        };
+        }
     }
 
     pub async fn connect_udp(&self, socket: UdpSocket) -> io::Result<ConnectedUdpSocket> {
-        return match self {
+        match self {
             Address::SocketAddress(addr) => ConnectedUdpSocket::connect(socket, addr).await,
             Address::DomainNameAddress(host, port) => {
                 ConnectedUdpSocket::connect(socket, (host.as_str(), *port)).await
             }
-        };
+        }
     }
 }
 

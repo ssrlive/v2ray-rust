@@ -118,11 +118,17 @@ jobs:
         path: target
         key: cache-target-${{ runner.os }}-${{ steps.rust-version.outputs.version }}-${{ hashFiles('Cargo.lock') }}
 
+    - name: fmt
+      run: cargo fmt --all -- --check
+
+    - name: clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
         
     - name: Build
       shell: bash
       run: |
-        cargo build --release --target=${{matrix.config.target_triple}} 
+        cargo build --release --target=${{matrix.config.target_triple}} --no-default-features
+        cargo build --release --target=${{matrix.config.target_triple}} --all-features
       
     - name: Run tests
       shell: bash

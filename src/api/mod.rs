@@ -115,13 +115,13 @@ impl LatencyService for ApiLatencyServer {
                     .await;
                     let duration = start.elapsed();
                     if timeout_stream.is_err() {
-                        return Ok::<(String, i64), std::io::Error>((name, -1i64));
+                        Ok::<(String, i64), std::io::Error>((name, -1i64))
                     } else {
                         let stream = timeout_stream?;
                         if stream.is_err() {
                             return Ok((name, -1i64));
                         }
-                        return Ok((name, duration.as_millis() as i64));
+                        Ok((name, duration.as_millis() as i64))
                     }
                 });
             }

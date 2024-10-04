@@ -10,7 +10,7 @@ pub enum CipherKind {
 }
 
 impl CipherKind {
-    fn new(&self, sub_key: &[u8]) -> CipherInner {
+    fn new_cipher(&self, sub_key: &[u8]) -> CipherInner {
         match self {
             CipherKind::None => {
                 unreachable!()
@@ -92,7 +92,7 @@ pub struct AeadCipher {
 impl AeadCipher {
     pub fn new(kind: CipherKind, key: &[u8], iv_or_salt: &[u8]) -> AeadCipher {
         let sub_key = ss_hkdf_sha1(iv_or_salt, key);
-        let cipher = kind.new(&sub_key[..key.len()]);
+        let cipher = kind.new_cipher(&sub_key[..key.len()]);
         AeadCipher {
             cipher,
             nonce: [0u8; 24],

@@ -161,6 +161,7 @@ fn host_addr(uri: &http::Uri) -> Option<Address> {
 
 // Create a TCP connection to host:port, build a tunnel between the connection and
 // the upgraded connection
+#[allow(clippy::too_many_arguments)]
 async fn tunnel(
     upgraded: Upgraded,
     addr: Address,

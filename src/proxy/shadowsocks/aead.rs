@@ -5,7 +5,6 @@ use std::{
     pin::Pin,
     slice,
     task::{Context, Poll},
-    u16,
 };
 
 use bytes::{Buf, BufMut, BytesMut};

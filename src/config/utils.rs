@@ -15,7 +15,7 @@ impl<V> KeepInsertOrderMap<V> {
         }
     }
     pub(super) fn insert(&mut self, key: String, v: V) {
-        if self.order.get(key.as_str()).is_none() {
+        if !self.order.contains_key(key.as_str()) {
             self.order.insert(key.clone(), self.data.len());
             self.data.push((key, v));
         }

@@ -155,16 +155,17 @@ impl<S: AsyncReadExt + Unpin + AsyncWriteExt> Socks5Stream<S> {
                 ]);
                 address.write_to_buf(&mut self.read_buf);
                 self.stream.write_all(&self.read_buf).await?;
-                return Err(Error::new(
+                Err(Error::new(
                     io::ErrorKind::Other,
                     format!("socks command {:#x} is not supported", buf[1]),
-                ));
+                ))
             }
         }
     }
 }
 
 type OutBoundPacketSender = tokio::sync::watch::Sender<(Address, BytesMut)>; // outbound packet sender
+#[allow(clippy::type_complexity)]
 struct NatMap(
     HashMap<
         String, // outbound tag
@@ -338,7 +339,7 @@ impl Encoder<(Bytes, Address)> for Socks5UdpCodec {
         dst.reserve(3 + item.1.serialized_len() + item.0.len());
         dst.put_slice(&[0u8, 0u8, 0u8]);
         item.1.write_to_buf(dst);
-        dst.put_slice(&*item.0);
+        dst.put_slice(&item.0);
         Ok(())
     }
 }

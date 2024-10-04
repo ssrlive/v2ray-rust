@@ -31,6 +31,7 @@ pub struct ConfigServerBuilder {
 }
 
 impl ConfigServerBuilder {
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
         backlog: u32,
         relay_buffer_size: usize,
@@ -53,7 +54,7 @@ impl ConfigServerBuilder {
         }
     }
     pub fn run(mut self) -> io::Result<()> {
-        let router = (&self.router).clone();
+        let router = self.router.clone();
         let enable_api_server = self.enable_api_server;
         if enable_api_server {
             COUNTER_MAP.get_or_init(|| {
@@ -89,9 +90,9 @@ impl ConfigServerBuilder {
                 map
             });
         }
-        let inner_map = (&self.inner_map).clone();
+        let inner_map = self.inner_map.clone();
         {
-            let _api_inner_map = (&self.inner_map).clone();
+            let _api_inner_map = self.inner_map.clone();
             actix_rt::System::new().block_on(async move {
                 if enable_api_server {
                     log::info!("api server listening on: {}", self.api_server_addr);
@@ -154,7 +155,7 @@ impl ConfigServerBuilder {
                                         COUNTER_MAP.get().unwrap().get(out_down.as_str()).unwrap();
                                     let out_up =
                                         COUNTER_MAP.get().unwrap().get(out_up.as_str()).unwrap();
-                                    return relay_with_atomic_counter(
+                                    relay_with_atomic_counter(
                                         io,
                                         out_stream,
                                         in_up.unwrap(),
@@ -163,9 +164,9 @@ impl ConfigServerBuilder {
                                         out_down,
                                         self.relay_buffer_size,
                                     )
-                                    .await;
+                                    .await
                                 } else {
-                                    return relay(io, out_stream, self.relay_buffer_size).await;
+                                    relay(io, out_stream, self.relay_buffer_size).await
                                 }
                             }
                         })
@@ -233,7 +234,7 @@ impl ConfigServerBuilder {
                                         COUNTER_MAP.get().unwrap().get(out_down.as_str()).unwrap();
                                     let out_up =
                                         COUNTER_MAP.get().unwrap().get(out_up.as_str()).unwrap();
-                                    return relay_with_atomic_counter(
+                                    relay_with_atomic_counter(
                                         x.0,
                                         out_stream,
                                         in_up.unwrap(),
@@ -242,9 +243,9 @@ impl ConfigServerBuilder {
                                         out_down,
                                         self.relay_buffer_size,
                                     )
-                                    .await;
+                                    .await
                                 } else {
-                                    return relay(x.0, out_stream, self.relay_buffer_size).await;
+                                    relay(x.0, out_stream, self.relay_buffer_size).await
                                 }
                             }
                         })

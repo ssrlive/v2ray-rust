@@ -91,7 +91,7 @@ impl<T: ProxySteam> AsyncWrite for BinaryWsStream<T> {
         Pin::new(&mut self.inner)
             .start_send(message)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{:?}", e)))?;
-       let _p =  Pin::new(&mut self.inner)
+        let _p = Pin::new(&mut self.inner)
             .poll_flush(cx)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{:?}", e)))?;
         Poll::Ready(Ok(buf.len()))

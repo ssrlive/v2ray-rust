@@ -30,7 +30,7 @@ fn create_auth_id(cmd_key: &[u8], time: &[u8]) -> BytesMut {
     let mut random_bytes = [0u8; 4];
     random_iv_or_salt(&mut random_bytes);
     buf.put_slice(&random_bytes);
-    let zero = crc32fast::hash(&*buf);
+    let zero = crc32fast::hash(&buf);
     buf.put_u32(zero);
     let key = vmess_kdf_1_one_shot(cmd_key, KDF_SALT_CONST_AUTH_ID_ENCRYPTION_KEY);
     let block = Aes128::new_with_slice(&key[0..16]);
@@ -63,7 +63,7 @@ pub fn seal_vmess_aead_header(cmd_key: &[u8], data: &[u8]) -> BytesMut {
         let payload_header_length_aeadkey = vmess_kdf_3_one_shot(
             cmd_key,
             KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_LENGTH_AEAD_KEY,
-            &*generated_auth_id,
+            &generated_auth_id,
             &connection_nonce,
         );
         let payload_header_length_aead_nonce = vmess_kdf_3_one_shot(

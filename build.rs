@@ -9,9 +9,8 @@ fn main() {
     tonic_build::configure()
         .build_client(false)
         .protoc_arg("--experimental_allow_proto3_optional")
-        .compile(&["src/api/api.proto"], &["src/api/"])
+        .compile_protos(&["src/api/api.proto"], &["src/api/"])
         .unwrap();
-    //tonic_build::compile_protos("src/api/api.proto").unwrap();
     #[cfg(feature = "enable-useless")]
     let customize = Customize::default()
         .gen_mod_rs(false)
@@ -21,7 +20,7 @@ fn main() {
     protobuf_codegen::Codegen::new()
         .out_dir("src/")
         .customize(customize)
-        .inputs(&["src/config/geoip.proto", "src/config/geosite.proto"])
+        .inputs(["src/config/geoip.proto", "src/config/geosite.proto"])
         .include(".")
         .out_dir("src/config/")
         .run()
