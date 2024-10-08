@@ -41,7 +41,7 @@ futures-util = { version = "0.3", default-features = false, features = [
     "std",
 ] }
 gentian = "0.1"
-h2 = "0.3"
+h2 = "0.4"
 hkdf = "0.12"
 hmac = "0.12"
 http = "0.2"
