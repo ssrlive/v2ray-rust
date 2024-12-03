@@ -36,7 +36,7 @@ impl PingPongBloom {
     // Borrowed from shadowsocks-libev's default value
     const BF_ERROR_RATE_FOR_CLIENT: f64 = 1e-15;
 
-    fn new(is_local: bool) -> PingPongBloom {
+    fn new(is_local: bool) -> std::io::Result<PingPongBloom> {
         let (mut item_count, fp_p) = if is_local {
             (
                 Self::BF_NUM_ENTRIES_FOR_CLIENT,
@@ -51,15 +51,16 @@ impl PingPongBloom {
 
         item_count /= 2;
 
-        PingPongBloom {
+        use std::io::{Error, ErrorKind::Other};
+        Ok(PingPongBloom {
             blooms: [
-                Bloom::new_for_fp_rate(item_count, fp_p),
-                Bloom::new_for_fp_rate(item_count, fp_p),
+                Bloom::new_for_fp_rate(item_count, fp_p).map_err(|e| Error::new(Other, e))?,
+                Bloom::new_for_fp_rate(item_count, fp_p).map_err(|e| Error::new(Other, e))?,
             ],
             bloom_count: [0, 0],
             item_count,
             current: 0,
-        }
+        })
     }
 
     // Check if data in `buf` exist.
@@ -105,10 +106,10 @@ pub type SharedBloomContext = Arc<BloomContext>;
 
 impl BloomContext {
     /// Create a non-shared Context
-    pub fn new(is_local: bool) -> BloomContext {
-        BloomContext {
-            nonce_ppbloom: SpinMutex::new(PingPongBloom::new(is_local)),
-        }
+    pub fn new(is_local: bool) -> std::io::Result<BloomContext> {
+        Ok(BloomContext {
+            nonce_ppbloom: SpinMutex::new(PingPongBloom::new(is_local)?),
+        })
     }
 
     /// Check if nonce exist or not

@@ -41,7 +41,7 @@ use std::sync::Arc;
 
 use uuid::Uuid;
 static SS_LOCAL_SHARED_CONTEXT: once_cell::sync::Lazy<SharedBloomContext> =
-    once_cell::sync::Lazy::new(|| Arc::new(BloomContext::new(true)));
+    once_cell::sync::Lazy::new(|| Arc::new(BloomContext::new(true).expect("BloomContext")));
 
 #[derive(Deserialize, Clone)]
 struct VmessConfig {
