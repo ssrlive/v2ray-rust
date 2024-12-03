@@ -110,29 +110,29 @@ impl Default for GeoIPMatcher {
 
 impl GeoIPMatcher {
     pub fn match4(&self, ip: u32) -> &str {
-        return if let Some(c) = self.trie4.get(ip) {
+        if let Some(c) = self.trie4.get(ip) {
             self.outbound[c as usize].as_str()
         } else {
             ""
-        };
+        }
     }
 
     pub fn match6(&self, ip: u128) -> &str {
-        return if let Some(c) = self.trie6.get(ip) {
+        if let Some(c) = self.trie6.get(ip) {
             self.outbound[c as usize].as_str()
         } else {
             ""
-        };
+        }
     }
 
     fn get_outbound_pos(&mut self, outbound: String) -> usize {
-        return if let Some(p) = self.outbound.iter().position(|x| x == &outbound) {
+        if let Some(p) = self.outbound.iter().position(|x| x == &outbound) {
             p
         } else {
             let len = self.outbound.len();
             self.outbound.push(outbound);
             len
-        };
+        }
     }
 
     pub fn put_v6(&mut self, ip6_cidr: cidr::Ipv6Cidr, outbound: String) {

@@ -57,7 +57,7 @@ host = "127.0.0.1:10002"
 service_name = "gungungun"
 
 [[outbounds]]
-chain = ["tls","v"]
+chain = ["tls", "v"]
 #chain = ["h2","v"]
 # chain = ["w","v","ss2"]
 # chain = ["t","w","v"]
@@ -110,7 +110,7 @@ rules = ["cn"]
 # If file path is not provided,
 # v2ray-rs will read env varaiable `v2ray.location.asset` or `V2RAY_LOCATION_ASSET` or current exe dir
 [[geoip_rules]]
-tag="private"
+tag = "private"
 # file_path = "your_custom_geoip_file_path"
 rules = ["private"]
 

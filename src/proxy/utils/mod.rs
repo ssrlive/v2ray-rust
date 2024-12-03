@@ -26,7 +26,7 @@ impl<'a> ChainStreamBuilderProtocolTypeIter<'a> {
     }
 }
 
-impl<'a> Iterator for ChainStreamBuilderProtocolTypeIter<'a> {
+impl Iterator for ChainStreamBuilderProtocolTypeIter<'_> {
     type Item = ProtocolType;
 
     #[gentian]

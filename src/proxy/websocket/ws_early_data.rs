@@ -143,12 +143,12 @@ impl AsyncWrite for BinaryWsStreamWithEarlyData {
                 }
             }
         }
-        return match &mut self.as_mut().stream {
+        match &mut self.as_mut().stream {
             None => {
                 unreachable!()
             }
             Some(s) => Pin::new(s).poll_write(cx, buf),
-        };
+        }
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {

@@ -141,7 +141,7 @@ impl<'a, 'b, T> UdpReadHalf<'a, 'b, T> {
     }
 }
 
-impl<'a, 'b, T: UdpRead + Unpin> Future for UdpReadHalf<'a, 'b, T> {
+impl<T: UdpRead + Unpin> Future for UdpReadHalf<'_, '_, T> {
     type Output = io::Result<(usize, Address)>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -181,7 +181,7 @@ impl<'a, 'b, T> UdpWriteHalf<'a, 'b, T> {
     }
 }
 
-impl<'a, 'b, T: UdpWrite + Unpin> Future for UdpWriteHalf<'a, 'b, T> {
+impl<T: UdpWrite + Unpin> Future for UdpWriteHalf<'_, '_, T> {
     type Output = io::Result<usize>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
