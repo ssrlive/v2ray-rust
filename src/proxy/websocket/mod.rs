@@ -61,7 +61,7 @@ impl<T: ProxySteam> AsyncRead for BinaryWsStream<T> {
                         buf.put_slice(&binary);
                         return Poll::Ready(Ok(()));
                     } else {
-                        self.read_buffer = Some(Bytes::from(binary));
+                        self.read_buffer = Some(binary);
                         continue;
                     }
                 }
@@ -87,7 +87,7 @@ impl<T: ProxySteam> AsyncWrite for BinaryWsStream<T> {
     ) -> Poll<Result<usize, io::Error>> {
         ready!(Pin::new(&mut self.inner).poll_ready(cx))
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{:?}", e)))?;
-        let message = Message::Binary(buf.into());
+        let message = Message::Binary(buf.to_vec().into());
         Pin::new(&mut self.inner)
             .start_send(message)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{:?}", e)))?;

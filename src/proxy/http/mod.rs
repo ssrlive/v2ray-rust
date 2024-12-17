@@ -1,6 +1,5 @@
 mod connector;
 use http::{header, StatusCode};
-use hyper::server::conn::Http;
 use std::collections::HashMap;
 use std::io;
 use std::str::FromStr;
@@ -12,12 +11,20 @@ use crate::common::net::{relay, relay_with_atomic_counter};
 use crate::common::new_error;
 use crate::config::{Router, COUNTER_MAP};
 use crate::debug_log;
-use crate::proxy::{Address, ChainStreamBuilder};
-use hyper::service::service_fn;
-use hyper::upgrade::Upgraded;
-use hyper::{Body, Client, Method, Request, Response};
+use crate::proxy::{Address, BoxProxyStream, ChainStreamBuilder};
+use hyper::{
+    server::conn::Http, service::service_fn, upgrade::Upgraded, Body, Client, Method, Request,
+    Response,
+};
 
 use self::connector::Connector;
+
+// To proxy tls scheme, the client must use CONNECT method. So here we are always using HTTP1.1.
+impl hyper::client::connect::Connection for BoxProxyStream {
+    fn connected(&self) -> hyper::client::connect::Connected {
+        hyper::client::connect::Connected::new()
+    }
+}
 
 #[derive(Clone)]
 pub struct HttpInbound {

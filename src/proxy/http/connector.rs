@@ -1,6 +1,5 @@
 use http::uri::Scheme;
 use http::Uri;
-use hyper::client::connect::{Connected, Connection};
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -85,12 +84,5 @@ impl tower::Service<Uri> for Connector {
             }
         };
         Box::pin(f)
-    }
-}
-
-// To proxy tls scheme, the client must use CONNECT method. So here we are always using HTTP1.1.
-impl Connection for BoxProxyStream {
-    fn connected(&self) -> Connected {
-        Connected::new()
     }
 }

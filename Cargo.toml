@@ -5,6 +5,10 @@ exclude = ["./test_config.toml"]
 name = "v2ray-rust"
 version = "0.1.0"
 
+[[bin]]
+name = "v2ray-rs"
+path = "src/bin/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 default = []
@@ -61,7 +65,7 @@ socket2 = { version = "0.5", features = ["all"] }
 spin = "0.9"
 tokio = { version = "1", features = ["net", "io-util", "macros", "sync"] }
 tokio-boring = { version = "4", optional = true }
-tokio-tungstenite = { version = "0.24", features = [
+tokio-tungstenite = { version = "0.26", features = [
     "stream",
     "handshake",
 ], default-features = false }
@@ -71,19 +75,15 @@ tonic = { version = "0.12", optional = true }
 tower = "0.5"
 uuid = { version = "1", features = ["std", "v4"] }
 
-[[bin]]
-name = "v2ray-rs"
-path = "src/bin/main.rs"
+[build-dependencies]
+protobuf-codegen = "3"
+tonic-build = "0.12"
 
 [profile.release]
 codegen-units = 1
 lto = true
 opt-level = 3
 strip = true
-
-[build-dependencies]
-protobuf-codegen = "3"
-tonic-build = "0.12"
 
 [target.'cfg(windows)'.dependencies]
 schannel = "0.1"
