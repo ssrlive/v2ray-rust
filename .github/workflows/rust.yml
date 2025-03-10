@@ -72,6 +72,7 @@ jobs:
       uses: ilammy/setup-nasm@v1.5.2
 
     - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
 
     - name: macOS - Build preparation - Install Packages
       if: matrix.config.os == 'macos-latest'
@@ -119,44 +120,48 @@ jobs:
         key: cache-target-${{ runner.os }}-${{ steps.rust-version.outputs.version }}-${{ hashFiles('Cargo.lock') }}
 
     - name: fmt
+      if: ${{ !cancelled() }}
       run: cargo fmt --all -- --check
 
     - name: clippy
+      if: ${{ !cancelled() }}
       run: cargo clippy --all-targets --all-features -- -D warnings
         
     - name: Build
+      if: ${{ !cancelled() }}
       shell: bash
       run: |
         cargo build --release --target=${{matrix.config.target_triple}} --no-default-features
         cargo build --release --target=${{matrix.config.target_triple}} --all-features
       
     - name: Run tests
+      if: ${{ !cancelled() }}
       shell: bash
       run: |
         cargo test --release --target=${{matrix.config.target_triple}} 
         
-    - uses: robinraju/release-downloader@v1.11
+    - uses: robinraju/release-downloader@v1.12
       with:
         repository: "v2fly/geoip"
         latest: true
         fileName: "geoip.dat"
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - uses: robinraju/release-downloader@v1.11
+    - uses: robinraju/release-downloader@v1.12
       with:
         repository: "v2fly/geoip"
         latest: true
         fileName: "geoip.dat.sha256sum"
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - uses: robinraju/release-downloader@v1.11
+    - uses: robinraju/release-downloader@v1.12
       with:
         repository: "v2fly/domain-list-community"
         latest: true
         fileName: "dlc.dat.sha256sum"
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - uses: robinraju/release-downloader@v1.11
+    - uses: robinraju/release-downloader@v1.12
       with:
         repository: "v2fly/domain-list-community"
         latest: true
@@ -165,6 +170,7 @@ jobs:
 
 
     - name: Add geoip,geosite to release
+      if: ${{ !cancelled() }}
       shell: bash
       run: |
         mkdir release-tmp
@@ -197,3 +203,7 @@ jobs:
         asset_name: v2ray-rust-${{ steps.get_version.outputs.VERSION }}-${{ matrix.config.artifact }}.7z
         tag: ${{ github.ref }}
         overwrite: true
+
+    - name: Abort on error
+      if: ${{ failure() }}
+      run: echo "iOS build job failed" && false

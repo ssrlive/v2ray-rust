@@ -1,11 +1,11 @@
 use crate::common::random_iv_or_salt;
 use crate::proxy::{Address, ProxyUdpStream, UdpRead, UdpWrite};
 use crate::{impl_async_read, impl_async_useful_traits, impl_async_write, impl_flush_shutdown};
-use base64::{engine::general_purpose::URL_SAFE, Engine as _};
+use base64::{Engine as _, engine::general_purpose::URL_SAFE};
 use futures_util::ready;
 use gentian::gentian;
 use hyper::Request;
-use rand::{thread_rng, Rng};
+use rand::Rng;
 use std::io;
 use std::io::{Error, ErrorKind};
 use std::pin::Pin;
@@ -85,17 +85,16 @@ where
         ctx: &mut Context<'_>,
         buf: &[u8],
     ) -> Poll<io::Result<usize>> {
-        let mut rng = thread_rng();
+        let mut rng = rand::rng();
         let mut encoded_buf = String::new();
         let mut salt = [0u8; 16];
         random_iv_or_salt(&mut salt);
         URL_SAFE.encode_string(salt, &mut encoded_buf);
+        let v1 = rng.random_range(0..50);
+        let v2 = rng.random_range(0..10);
         let req = Request::builder()
             .uri(format!("http://{}", self.host))
-            .header(
-                "User-Agent",
-                format!("curl/7.{}.{}", rng.gen_range(0..50), rng.gen_range(0..10)),
-            )
+            .header("User-Agent", format!("curl/7.{}.{}", v1, v2))
             .header("Upgrade", "websocket")
             .header("Connection", "Upgrade")
             .header("Sec-WebSocket-Key", encoded_buf)

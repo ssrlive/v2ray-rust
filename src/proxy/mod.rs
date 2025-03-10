@@ -317,8 +317,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::proxy::ProtocolType::{Trojan, Vmess, SS, WS};
-    use crate::proxy::{build_udp_marker_impl, ProtocolType};
+    use crate::proxy::ProtocolType::{SS, Trojan, Vmess, WS};
+    use crate::proxy::{ProtocolType, build_udp_marker_impl};
     use bitvec::vec::BitVec;
 
     fn from_protocol_type_to_udp_marker_bit_vec<T>(t: T) -> BitVec

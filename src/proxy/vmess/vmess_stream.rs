@@ -13,7 +13,7 @@ use crate::common::fnv1a::Fnv1aHasher;
 use crate::common::net::PollUtil;
 use crate::common::{random_iv_or_salt, sha256};
 use crate::proxy::vmess::aead::{VmessAeadReader, VmessAeadWriter, VmessSecurity};
-use crate::proxy::vmess::aead_header::{seal_vmess_aead_header, VmessHeaderReader};
+use crate::proxy::vmess::aead_header::{VmessHeaderReader, seal_vmess_aead_header};
 use crate::proxy::vmess::vmess_option::VmessOption;
 use crate::proxy::{Address, UdpRead, UdpWrite};
 use crate::{

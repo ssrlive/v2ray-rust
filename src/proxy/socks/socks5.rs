@@ -1,10 +1,10 @@
-use crate::common::{new_error, HW_BUFFER_SIZE, LW_BUFFER_SIZE};
+use crate::common::{HW_BUFFER_SIZE, LW_BUFFER_SIZE, new_error};
 use crate::config::Router;
 use crate::debug_log;
-use crate::proxy::socks::{auth_methods, response_code, socks_command, SOCKS_VERSION};
-use crate::proxy::udp::split_ext;
 use crate::proxy::Address;
 use crate::proxy::ChainStreamBuilder;
+use crate::proxy::socks::{SOCKS_VERSION, auth_methods, response_code, socks_command};
+use crate::proxy::udp::split_ext;
 use actix_rt::task::JoinHandle;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use futures_util::SinkExt;

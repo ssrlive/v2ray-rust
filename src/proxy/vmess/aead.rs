@@ -1,6 +1,6 @@
+use crate::common::LW_BUFFER_SIZE;
 use crate::common::aead_helper::AeadCipherHelper;
 use crate::common::net::PollUtil;
-use crate::common::LW_BUFFER_SIZE;
 use crate::proxy::vmess::vmess_stream::{CHUNK_SIZE, MAX_SIZE};
 use crate::{debug_log, impl_read_utils};
 use aes_gcm::Aes128Gcm;
@@ -253,7 +253,7 @@ impl VmessAeadReader {
                 self.buffer.len()
             );
             self.data_length -= 16; //remove tag
-                                    // 5. put data
+            // 5. put data
             while self.calc_data_to_put(dst) != 0 {
                 dst.put_slice(&self.buffer.as_ref()[0..self.minimal_data_to_put]);
                 self.data_length -= self.minimal_data_to_put;

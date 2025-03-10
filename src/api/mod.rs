@@ -8,8 +8,8 @@ use crate::proxy::{Address, ChainStreamBuilder};
 
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
+use std::sync::atomic::Ordering::Relaxed;
 use std::time::{Duration, Instant};
 
 use futures_util::future::join_all;

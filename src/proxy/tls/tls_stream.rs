@@ -13,7 +13,7 @@ use boring::ssl::{SslMethod, SslVersion};
 use foreign_types_shared::ForeignTypeRef;
 use std::io;
 
-use tokio_boring::{connect, SslStream};
+use tokio_boring::{SslStream, connect};
 
 #[cfg(target_os = "macos")]
 use super::macos as platform;
@@ -191,8 +191,8 @@ extern "C" fn decompress_ssl_cert(
 
 #[cfg(all(target_os = "linux", test))]
 mod tests {
-    use crate::proxy::tls::tls_stream::TlsStreamBuilder;
     use crate::proxy::ChainableStreamBuilder;
+    use crate::proxy::tls::tls_stream::TlsStreamBuilder;
     use std::net::ToSocketAddrs;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpStream;

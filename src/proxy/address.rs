@@ -90,7 +90,7 @@ impl Address {
         match self {
             Address::SocketAddress(SocketAddr::V4(..)) => 1 + 4 + 2,
             Address::SocketAddress(SocketAddr::V6(..)) => 1 + 8 * 2 + 2,
-            Address::DomainNameAddress(ref dmname, _) => 1 + 1 + dmname.len() + 2,
+            Address::DomainNameAddress(dmname, _) => 1 + 1 + dmname.len() + 2,
         }
     }
 
@@ -153,7 +153,7 @@ impl Address {
                 let addr = match String::from_utf8(domain_buf.to_vec()) {
                     Ok(addr) => addr,
                     Err(..) => {
-                        return Err(Error::new(ErrorKind::Other, "invalid address encoding"))
+                        return Err(Error::new(ErrorKind::Other, "invalid address encoding"));
                     }
                 };
                 let mut port_buf = &addr_buf[length..length + 2];

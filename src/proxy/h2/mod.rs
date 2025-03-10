@@ -1,4 +1,4 @@
-use crate::common::{new_error, LW_BUFFER_SIZE};
+use crate::common::{LW_BUFFER_SIZE, new_error};
 use crate::proxy::{
     BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType, UdpRead, UdpWrite,
 };
@@ -7,7 +7,6 @@ use bytes::{Bytes, BytesMut};
 use futures_util::ready;
 use h2::{RecvStream, SendStream};
 use http::{Request, Uri, Version};
-use rand::random;
 use std::collections::HashMap;
 use std::io;
 use std::io::{Error, ErrorKind};
@@ -39,7 +38,7 @@ impl Http2StreamBuilder {
     }
 
     fn req(&self) -> io::Result<Request<()>> {
-        let uri_idx = random::<usize>() % self.hosts.len();
+        let uri_idx = rand::random::<u64>() as usize % self.hosts.len();
         let uri: Uri = {
             Uri::builder()
                 .scheme("https")

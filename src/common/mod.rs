@@ -1,5 +1,5 @@
 use crate::debug_log;
-use aes::{cipher::BlockDecrypt, cipher::BlockEncrypt, cipher::KeyInit, Aes128};
+use aes::{Aes128, cipher::BlockDecrypt, cipher::BlockEncrypt, cipher::KeyInit};
 use sha2::Digest;
 use sha2::{Sha224, Sha256};
 use std::io;
@@ -63,7 +63,7 @@ pub fn random_iv_or_salt(iv_or_salt: &mut [u8]) {
     if iv_or_salt.is_empty() {
         return;
     }
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     loop {
         rand::Rng::fill(&mut rng, iv_or_salt);
         let is_zeros = iv_or_salt.iter().all(|&x| x == 0);
@@ -99,7 +99,7 @@ pub fn openssl_bytes_to_key(password: &[u8], key: &mut [u8]) {
 
 #[cfg(test)]
 mod tests {
-    use crate::common::{openssl_bytes_to_key, BlockCipherHelper};
+    use crate::common::{BlockCipherHelper, openssl_bytes_to_key};
     use crate::md5;
     use aes::Aes128;
 

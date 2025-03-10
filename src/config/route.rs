@@ -1,9 +1,9 @@
 use crate::common::new_error;
 use crate::proxy::Address;
-use domain_matcher::ac_automaton::HybridMatcher;
-use domain_matcher::mph::MphMatcher;
 use domain_matcher::DomainMatcher;
 use domain_matcher::MatchType;
+use domain_matcher::ac_automaton::HybridMatcher;
+use domain_matcher::mph::MphMatcher;
 
 #[cfg(feature = "enable-useless")]
 use crate::{
@@ -382,7 +382,7 @@ impl Router {
                     res
                 };
             }
-            Address::DomainNameAddress(ref domain_name, _) => {
+            Address::DomainNameAddress(domain_name, _) => {
                 for (tag, matcher) in self.domain_matchers.iter() {
                     if matcher.reverse_query(domain_name.as_str()) {
                         return tag.as_str();

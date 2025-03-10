@@ -1,5 +1,5 @@
-use http::uri::Scheme;
 use http::Uri;
+use http::uri::Scheme;
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -57,9 +57,14 @@ impl tower::Service<Uri> for Connector {
             match addr {
                 Ok(addr) => {
                     if is_tls_scheme {
-                        let err =
-                            Error::new(ErrorKind::Other, "HTTP inbound target URI is tls and the client is not using CONNECT method.");
-                        log::error!("HTTP inbound target URI is tls and the client is not using CONNECT method. URI is: {}", uri);
+                        let err = Error::new(
+                            ErrorKind::Other,
+                            "HTTP inbound target URI is tls and the client is not using CONNECT method.",
+                        );
+                        log::error!(
+                            "HTTP inbound target URI is tls and the client is not using CONNECT method. URI is: {}",
+                            uri
+                        );
                         return Err(err);
                     }
                     let ob = router.match_addr(&addr);

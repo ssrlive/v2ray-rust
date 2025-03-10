@@ -167,9 +167,8 @@ mod vmess_kdf_test {
 
     use crate::proxy::decode_hex;
     use crate::proxy::vmess::kdf::{
-        get_vmess_kdf_3, vmess_kdf_3_one_shot, KDF_SALT_CONST_AEAD_RESP_HEADER_LEN_IV,
-        KDF_SALT_CONST_AEAD_RESP_HEADER_LEN_KEY,
-        KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_LENGTH_AEAD_KEY,
+        KDF_SALT_CONST_AEAD_RESP_HEADER_LEN_IV, KDF_SALT_CONST_AEAD_RESP_HEADER_LEN_KEY,
+        KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_LENGTH_AEAD_KEY, get_vmess_kdf_3, vmess_kdf_3_one_shot,
     };
 
     #[test]

@@ -9,13 +9,13 @@ use std::io::Error;
 use std::mem::MaybeUninit;
 use std::net::SocketAddr;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::{Acquire, Release};
-use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::{fmt, io};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
-use tokio::net::{lookup_host, UdpSocket};
+use tokio::net::{UdpSocket, lookup_host};
 
 /// a fake connected udp socket which implemented AsyncRead and AsyncWrite
 pub struct ConnectedUdpSocket(UdpSocket, SocketAddr);
@@ -35,8 +35,8 @@ impl ConnectedUdpSocket {
 
 #[cfg(all(target_os = "linux", test))]
 mod tests {
-    use crate::proxy::udp::{split_ext, ConnectedUdpSocket};
     use crate::proxy::Address;
+    use crate::proxy::udp::{ConnectedUdpSocket, split_ext};
     use bytes::BytesMut;
     use std::io;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};

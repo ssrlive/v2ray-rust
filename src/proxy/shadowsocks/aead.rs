@@ -9,7 +9,7 @@ use std::{
 
 use bytes::{Buf, BufMut, BytesMut};
 
-use crate::common::{net::PollUtil, LW_BUFFER_SIZE};
+use crate::common::{LW_BUFFER_SIZE, net::PollUtil};
 use futures_util::ready;
 use gentian::gentian;
 

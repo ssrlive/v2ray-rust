@@ -5,7 +5,7 @@ use bytes::{Buf, Bytes};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use tokio_tungstenite::tungstenite::handshake::client::generate_key;
-use tokio_tungstenite::{client_async_with_config, tungstenite::Message, WebSocketStream};
+use tokio_tungstenite::{WebSocketStream, client_async_with_config, tungstenite::Message};
 
 use crate::common::new_error;
 use crate::debug_log;
@@ -14,9 +14,9 @@ use crate::proxy::{
     BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType, ProxySteam,
     ProxyUdpStream, UdpRead, UdpWrite,
 };
+use futures_util::Stream;
 use futures_util::ready;
 use futures_util::sink::Sink;
-use futures_util::Stream;
 use std::collections::BTreeMap;
 use std::{
     io,
@@ -72,7 +72,7 @@ impl<T: ProxySteam> AsyncRead for BinaryWsStream<T> {
                     return Poll::Ready(Err(new_error(format!(
                         "invalid message type {:?}",
                         message
-                    ))))
+                    ))));
                 }
             }
         }

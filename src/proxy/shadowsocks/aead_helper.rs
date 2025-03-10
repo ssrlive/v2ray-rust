@@ -57,26 +57,26 @@ enum CipherInner {
 impl CipherInner {
     pub fn encrypt_slice(&self, nonce: &[u8], plaintext_in_ciphertext_out: &mut [u8]) {
         match self {
-            CipherInner::Aes128Gcm(ref c) => {
+            CipherInner::Aes128Gcm(c) => {
                 c.encrypt_inplace_with_slice(nonce, b"", plaintext_in_ciphertext_out);
             }
-            CipherInner::Aes256Gcm(ref c) => {
+            CipherInner::Aes256Gcm(c) => {
                 c.encrypt_inplace_with_slice(nonce, b"", plaintext_in_ciphertext_out);
             }
-            CipherInner::ChaCha20Poly1305(ref c) => {
+            CipherInner::ChaCha20Poly1305(c) => {
                 c.encrypt_inplace_with_slice(nonce, b"", plaintext_in_ciphertext_out);
             }
         }
     }
     pub fn decrypt_slice(&self, nonce: &[u8], ciphertext_in_plaintext_out: &mut [u8]) -> bool {
         match self {
-            CipherInner::Aes128Gcm(ref c) => {
+            CipherInner::Aes128Gcm(c) => {
                 c.decrypt_inplace_with_slice(nonce, b"", ciphertext_in_plaintext_out)
             }
-            CipherInner::Aes256Gcm(ref c) => {
+            CipherInner::Aes256Gcm(c) => {
                 c.decrypt_inplace_with_slice(nonce, b"", ciphertext_in_plaintext_out)
             }
-            CipherInner::ChaCha20Poly1305(ref c) => {
+            CipherInner::ChaCha20Poly1305(c) => {
                 c.decrypt_inplace_with_slice(nonce, b"", ciphertext_in_plaintext_out)
             }
         }

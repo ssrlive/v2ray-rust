@@ -1,4 +1,4 @@
-use crate::common::{new_error, LW_BUFFER_SIZE};
+use crate::common::{LW_BUFFER_SIZE, new_error};
 use crate::proxy::{
     BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType, UdpRead, UdpWrite,
 };
