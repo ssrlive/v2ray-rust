@@ -1,10 +1,6 @@
 name: Dependabot Auto Merge
 
 on:
-  # https://securitylab.github.com/research/github-actions-preventing-pwn-requests
-  # could and should work, at least for public repos;
-  # tracking issue for this action's issue:
-  # https://github.com/ahmadnassri/action-dependabot-auto-merge/issues/60
   pull_request_target:
     types: [labeled]
 
@@ -16,11 +12,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: ahmadnassri/action-dependabot-auto-merge@v2
+      - name: Auto approve pull request, then squash and merge
+        uses: ahmadnassri/action-dependabot-auto-merge@v2
         with:
-          target: minor
-          # Note: This needs to be a PAT with (public) repo rights,
-          #       PAT-owning user needs to have write access to this repo
-          #       (dependabot needs to recognize the comment as coming from an allowed reviewer)
           github-token: ${{ secrets.PAT_REPO_ADMIN }}
-        name: Auto approve pull request, then squash and merge
