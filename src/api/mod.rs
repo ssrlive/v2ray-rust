@@ -1,8 +1,6 @@
 #![cfg(feature = "enable-useless")]
 
-use crate::api::v2ray_rust_api::{
-    GetLatencyRequest, GetLatencyResponse, GetStatsRequest, GetStatsResponse,
-};
+use crate::api::v2ray_rust_api::{GetLatencyRequest, GetLatencyResponse, GetStatsRequest, GetStatsResponse};
 use crate::config::COUNTER_MAP;
 use crate::proxy::{Address, ChainStreamBuilder};
 
@@ -35,10 +33,7 @@ impl ApiServer {
 
 #[tonic::async_trait]
 impl StatsService for ApiServer {
-    async fn get_stats(
-        &self,
-        mut request: Request<GetStatsRequest>,
-    ) -> Result<Response<GetStatsResponse>, Status> {
+    async fn get_stats(&self, mut request: Request<GetStatsRequest>) -> Result<Response<GetStatsResponse>, Status> {
         let name = &request.get_ref().name;
         let reset = request.get_ref().reset;
         let ret_v;
@@ -64,26 +59,20 @@ pub struct ApiLatencyServer {
     inner_map: Arc<HashMap<String, ChainStreamBuilder>>,
 }
 impl ApiLatencyServer {
-    pub(crate) fn new_server(
-        inner_map: Arc<HashMap<String, ChainStreamBuilder>>,
-    ) -> LatencyServiceServer<Self> {
+    pub(crate) fn new_server(inner_map: Arc<HashMap<String, ChainStreamBuilder>>) -> LatencyServiceServer<Self> {
         LatencyServiceServer::new(Self { inner_map })
     }
 }
 #[tonic::async_trait]
 impl LatencyService for ApiLatencyServer {
-    async fn get_latency(
-        &self,
-        request: Request<GetLatencyRequest>,
-    ) -> Result<Response<GetLatencyResponse>, Status> {
+    async fn get_latency(&self, request: Request<GetLatencyRequest>) -> Result<Response<GetLatencyResponse>, Status> {
         if let Some(req) = &request.get_ref().outbound_name {
             if let Some(b) = self.inner_map.get(req) {
                 let start = Instant::now();
                 let stream = b
                     .build_tcp(
-                        Address::from_str(request.get_ref().test_url.as_str()).map_err(|_| {
-                            Status::new(tonic::Code::InvalidArgument, "test_url is invalid")
-                        })?,
+                        Address::from_str(request.get_ref().test_url.as_str())
+                            .map_err(|_| Status::new(tonic::Code::InvalidArgument, "test_url is invalid"))?,
                     )
                     .await;
                 let duration = start.elapsed();
@@ -101,8 +90,7 @@ impl LatencyService for ApiLatencyServer {
         } else {
             let mut vec_fut = Vec::new();
             let test_url = request.get_ref().test_url.as_str();
-            let addr = Address::from_str(test_url)
-                .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "invalid test url"))?;
+            let addr = Address::from_str(test_url).map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "invalid test url"))?;
             for (name, _) in self.inner_map.iter() {
                 let name = name.clone();
                 let addr = addr.clone();

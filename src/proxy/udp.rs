@@ -13,7 +13,6 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::{Acquire, Release};
 use std::task::{Context, Poll};
-use std::{fmt, io};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::{UdpSocket, lookup_host};
 
@@ -21,10 +20,7 @@ use tokio::net::{UdpSocket, lookup_host};
 pub struct ConnectedUdpSocket(UdpSocket, SocketAddr);
 
 impl ConnectedUdpSocket {
-    pub async fn connect<A: tokio::net::ToSocketAddrs>(
-        socket: UdpSocket,
-        addr: A,
-    ) -> io::Result<ConnectedUdpSocket> {
+    pub async fn connect<A: tokio::net::ToSocketAddrs>(socket: UdpSocket, addr: A) -> std::io::Result<ConnectedUdpSocket> {
         let mut addrs = lookup_host(addr).await?;
         if let Some(addr) = addrs.next() {
             return Ok(ConnectedUdpSocket(socket, addr));
@@ -70,24 +66,15 @@ mod tests {
 }
 
 impl AsyncRead for ConnectedUdpSocket {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
-        let this = self.get_mut();
-        this.0.poll_recv_from(cx, buf).map_ok(|_| ())
+    fn poll_read(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
+        self.get_mut().0.poll_recv_from(cx, buf).map_ok(|_| ())
     }
 }
 
 impl AsyncWrite for ConnectedUdpSocket {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<Result<usize, Error>> {
-        let this = self.get_mut();
-        this.0.poll_send_to(cx, buf, this.1)
+    fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, Error>> {
+        let mut_self = self.get_mut();
+        mut_self.0.poll_send_to(cx, buf, mut_self.1)
     }
 
     fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
@@ -101,27 +88,15 @@ impl AsyncWrite for ConnectedUdpSocket {
 
 //
 impl UdpRead for ConnectedUdpSocket {
-    fn poll_recv_from(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<Address>> {
-        let this = self.get_mut();
-        this.0
-            .poll_recv_from(cx, buf)
-            .map_ok(Address::SocketAddress)
+    fn poll_recv_from(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<Address>> {
+        self.get_mut().0.poll_recv_from(cx, buf).map_ok(Address::SocketAddress)
     }
 }
 
 impl UdpWrite for ConnectedUdpSocket {
-    fn poll_send_to(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-        _target: &Address,
-    ) -> Poll<io::Result<usize>> {
-        let this = self.get_mut();
-        this.0.poll_send_to(cx, buf, this.1)
+    fn poll_send_to(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8], _target: &Address) -> Poll<std::io::Result<usize>> {
+        let mut_self = self.get_mut();
+        mut_self.0.poll_send_to(cx, buf, mut_self.1)
     }
 }
 
@@ -142,26 +117,26 @@ impl<'a, 'b, T> UdpReadHalf<'a, 'b, T> {
 }
 
 impl<T: UdpRead + Unpin> Future for UdpReadHalf<'_, '_, T> {
-    type Output = io::Result<(usize, Address)>;
+    type Output = std::io::Result<(usize, Address)>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.get_mut();
-        let r = Pin::new(&mut *this.reader);
+        let mut_self = self.get_mut();
+        let r = Pin::new(&mut *mut_self.reader);
         let n = {
-            let dst = this.buf.chunk_mut();
+            let dst = mut_self.buf.chunk_mut();
             let dst = unsafe { &mut *(dst as *mut _ as *mut [MaybeUninit<u8>]) };
             let mut buf = ReadBuf::uninit(dst);
             let ptr = buf.filled().as_ptr();
-            this.addr = ready!(r.poll_recv_from(cx, &mut buf)?);
+            mut_self.addr = ready!(r.poll_recv_from(cx, &mut buf)?);
 
             // Ensure the pointer does not change from under us
             assert_eq!(ptr, buf.filled().as_ptr());
             buf.filled().len()
         };
         unsafe {
-            this.buf.advance_mut(n);
+            mut_self.buf.advance_mut(n);
         }
-        Ok((n, std::mem::take(&mut this.addr))).into()
+        Ok((n, std::mem::take(&mut mut_self.addr))).into()
     }
 }
 
@@ -173,21 +148,17 @@ pub struct UdpWriteHalf<'a, 'b, T> {
 
 impl<'a, 'b, T> UdpWriteHalf<'a, 'b, T> {
     fn new(writer: &'a mut T, target_addr: &'b Address, buf: &'b [u8]) -> Self {
-        Self {
-            writer,
-            target_addr,
-            buf,
-        }
+        Self { writer, target_addr, buf }
     }
 }
 
 impl<T: UdpWrite + Unpin> Future for UdpWriteHalf<'_, '_, T> {
-    type Output = io::Result<usize>;
+    type Output = std::io::Result<usize>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.get_mut();
-        let w = Pin::new(&mut *this.writer);
-        w.poll_send_to(cx, this.buf, this.target_addr)
+        let mut_self = self.get_mut();
+        let w = Pin::new(&mut *mut_self.writer);
+        w.poll_send_to(cx, mut_self.buf, mut_self.target_addr)
     }
 }
 
@@ -215,9 +186,7 @@ where
         stream: UnsafeCell::new(stream),
     });
 
-    let rd = ReadHalfExt {
-        inner: inner.clone(),
-    };
+    let rd = ReadHalfExt { inner: inner.clone() };
 
     let wr = WriteHalfExt { inner };
 
@@ -253,9 +222,7 @@ impl<T> ReadHalfExt<T> {
         if self.is_pair_of(&wr) {
             drop(wr);
 
-            let inner = Arc::try_unwrap(self.inner)
-                .ok()
-                .expect("`Arc::try_unwrap` failed");
+            let inner = Arc::try_unwrap(self.inner).ok().expect("`Arc::try_unwrap` failed");
 
             inner.stream.into_inner()
         } else {
@@ -280,22 +247,14 @@ impl<T: UdpRead> ReadHalfExt<T> {
 }
 
 impl<T: UdpRead> UdpRead for ReadHalfExt<T> {
-    fn poll_recv_from(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<Address>> {
+    fn poll_recv_from(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<Address>> {
         let mut inner = ready!(self.inner.poll_lock(cx));
         inner.stream_pin().poll_recv_from(cx, buf)
     }
 }
 
 impl<T: AsyncRead> AsyncRead for ReadHalfExt<T> {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
+    fn poll_read(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
         let mut inner = ready!(self.inner.poll_lock(cx));
         inner.stream_pin().poll_read(cx, buf)
     }
@@ -308,23 +267,14 @@ impl<T: UdpWrite> WriteHalfExt<T> {
 }
 
 impl<T: UdpWrite> UdpWrite for WriteHalfExt<T> {
-    fn poll_send_to(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-        target: &Address,
-    ) -> Poll<io::Result<usize>> {
+    fn poll_send_to(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8], target: &Address) -> Poll<std::io::Result<usize>> {
         let mut inner = ready!(self.inner.poll_lock(cx));
         inner.stream_pin().poll_send_to(cx, buf, target)
     }
 }
 
 impl<T: AsyncWrite> AsyncWrite for WriteHalfExt<T> {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<Result<usize, Error>> {
+    fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, Error>> {
         let mut inner = ready!(self.inner.poll_lock(cx));
         inner.stream_pin().poll_write(cx, buf)
     }
@@ -342,11 +292,7 @@ impl<T: AsyncWrite> AsyncWrite for WriteHalfExt<T> {
 
 impl<T> Inner<T> {
     fn poll_lock(&self, cx: &mut Context<'_>) -> Poll<Guard<'_, T>> {
-        if self
-            .locked
-            .compare_exchange(false, true, Acquire, Acquire)
-            .is_ok()
-        {
+        if self.locked.compare_exchange(false, true, Acquire, Acquire).is_ok() {
             Poll::Ready(Guard { inner: self })
         } else {
             // Spin... but investigate a better strategy
@@ -378,14 +324,14 @@ unsafe impl<T: Send> Send for WriteHalfExt<T> {}
 unsafe impl<T: Sync> Sync for ReadHalfExt<T> {}
 unsafe impl<T: Sync> Sync for WriteHalfExt<T> {}
 
-impl<T: fmt::Debug> fmt::Debug for ReadHalfExt<T> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl<T: std::fmt::Debug> std::fmt::Debug for ReadHalfExt<T> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fmt.debug_struct("split::ReadHalfExt").finish()
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for WriteHalfExt<T> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl<T: std::fmt::Debug> std::fmt::Debug for WriteHalfExt<T> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fmt.debug_struct("split::WriteHalfExt").finish()
     }
 }

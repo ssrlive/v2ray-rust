@@ -2,10 +2,7 @@
 
 use crate::common::new_error;
 use crate::debug_log;
-use crate::proxy::{
-    BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType, ProxyUdpStream,
-    UdpRead, UdpWrite,
-};
+use crate::proxy::{BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType, ProxyUdpStream, UdpRead, UdpWrite};
 use async_trait::async_trait;
 
 use boring::ssl::{SslConnector, SslSignatureAlgorithm};
@@ -31,12 +28,7 @@ pub struct TlsStreamBuilder {
 }
 
 impl TlsStreamBuilder {
-    pub fn new_from_config(
-        sni: String,
-        cert_file: &Option<String>,
-        verify_hostname: bool,
-        verify_sni: bool,
-    ) -> Self {
+    pub fn new_from_config(sni: String, cert_file: &Option<String>, verify_hostname: bool, verify_sni: bool) -> Self {
         let mut configuration = SslConnector::builder(SslMethod::tls()).unwrap();
         {
             log::debug!("start add system cert");
@@ -56,12 +48,8 @@ impl TlsStreamBuilder {
             debug_log!("load custom ca file");
             configuration.set_ca_file(cert_file).unwrap();
         }
-        configuration
-            .set_alpn_protos(b"\x02h2\x08http/1.1")
-            .unwrap();
-        configuration
-            .set_cipher_list("ALL:!aPSK:!ECDSA+SHA1:!3DES")
-            .unwrap();
+        configuration.set_alpn_protos(b"\x02h2\x08http/1.1").unwrap();
+        configuration.set_cipher_list("ALL:!aPSK:!ECDSA+SHA1:!3DES").unwrap();
         configuration
             .set_verify_algorithm_prefs(&[
                 SslSignatureAlgorithm::ECDSA_SECP256R1_SHA256,
@@ -74,9 +62,7 @@ impl TlsStreamBuilder {
                 SslSignatureAlgorithm::RSA_PKCS1_SHA512,
             ])
             .unwrap();
-        configuration
-            .set_min_proto_version(Some(SslVersion::TLS1_2))
-            .unwrap();
+        configuration.set_min_proto_version(Some(SslVersion::TLS1_2)).unwrap();
         configuration.enable_signed_cert_timestamps();
         configuration.enable_ocsp_stapling();
         configuration.set_grease_enabled(true);
@@ -107,13 +93,7 @@ macro_rules! build_tcp_impl {
         configuration.set_use_server_name_indication($name.verify_sni);
         configuration.set_verify_hostname($name.verify_hostname);
         unsafe {
-            boring_sys::SSL_add_application_settings(
-                configuration.as_ptr(),
-                b"h2".as_ptr(),
-                2,
-                b"\x00\x03".as_ptr(),
-                2,
-            );
+            boring_sys::SSL_add_application_settings(configuration.as_ptr(), b"h2".as_ptr(), 2, b"\x00\x03".as_ptr(), 2);
         }
         let stream = connect(configuration, $name.sni.as_str(), $io).await;
         return match stream {
@@ -133,11 +113,7 @@ impl ChainableStreamBuilder for TlsStreamBuilder {
         build_tcp_impl!(self, io);
     }
 
-    async fn build_udp(
-        &self,
-        io: BoxProxyUdpStream,
-        build_tcp_inside: bool,
-    ) -> io::Result<BoxProxyUdpStream> {
+    async fn build_udp(&self, io: BoxProxyUdpStream, build_tcp_inside: bool) -> io::Result<BoxProxyUdpStream> {
         if build_tcp_inside {
             build_tcp_impl!(self, io);
         }
@@ -172,14 +148,7 @@ extern "C" fn decompress_ssl_cert(
             return 0;
         }
         let uncompressed_len_ptr: *mut usize = &mut uncompressed_len;
-        if brotli::ffi::decompressor::CBrotliDecoderDecompress(
-            in_len,
-            in_,
-            uncompressed_len_ptr,
-            buf,
-        ) as i32
-            == 1
-        {
+        if brotli::ffi::decompressor::CBrotliDecoderDecompress(in_len, in_, uncompressed_len_ptr, buf) as i32 == 1 {
             *out = allocated_buffer;
             1
         } else {

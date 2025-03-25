@@ -5,10 +5,8 @@ use crate::proxy::{BoxProxyStream, UdpRead, UdpWrite};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use futures_util::ready;
 use std::future::Future;
-use std::io::Error;
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
-use std::{cmp, io};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio_tungstenite::client_async_with_config;
 use tokio_tungstenite::tungstenite::http::{HeaderValue, Request, StatusCode};
@@ -17,7 +15,7 @@ use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 pub(super) struct BinaryWsStreamWithEarlyData {
     stream: Option<BoxProxyStream>,
     req: Option<Request<()>>,
-    ws_stream_future: Option<Pin<Box<dyn Future<Output = io::Result<BoxProxyStream>> + Send>>>,
+    ws_stream_future: Option<Pin<Box<dyn Future<Output = std::io::Result<BoxProxyStream>> + Send>>>,
     early_waker: Option<Waker>,
     flush_waker: Option<Waker>,
     ws_config: Option<WebSocketConfig>,
@@ -51,15 +49,9 @@ impl BinaryWsStreamWithEarlyData {
         io: BoxProxyStream,
         req: Request<()>,
         config: Option<WebSocketConfig>,
-    ) -> Pin<Box<dyn Future<Output = io::Result<BoxProxyStream>> + Send>> {
-        async fn run(
-            io: BoxProxyStream,
-            req: Request<()>,
-            config: Option<WebSocketConfig>,
-        ) -> io::Result<BoxProxyStream> {
-            let (stream, resp) = client_async_with_config(req, io, config)
-                .await
-                .map_err(new_error)?;
+    ) -> Pin<Box<dyn Future<Output = std::io::Result<BoxProxyStream>> + Send>> {
+        async fn run(io: BoxProxyStream, req: Request<()>, config: Option<WebSocketConfig>) -> std::io::Result<BoxProxyStream> {
+            let (stream, resp) = client_async_with_config(req, io, config).await.map_err(new_error)?;
             if resp.status() != StatusCode::SWITCHING_PROTOCOLS {
                 return Err(new_error(format!("bad status: {}", resp.status())));
             }
@@ -73,11 +65,7 @@ impl BinaryWsStreamWithEarlyData {
 }
 
 impl AsyncRead for BinaryWsStreamWithEarlyData {
-    fn poll_read(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
+    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
         debug_log!("ws-0-rtt poll r");
         if !self.is_write_early_data {
             if self.early_waker.is_none() {
@@ -85,8 +73,7 @@ impl AsyncRead for BinaryWsStreamWithEarlyData {
             }
             return Poll::Pending;
         }
-        let this = self.get_mut();
-        match &mut this.stream {
+        match &mut self.get_mut().stream {
             None => {
                 unreachable!()
             }
@@ -96,11 +83,7 @@ impl AsyncRead for BinaryWsStreamWithEarlyData {
 }
 
 impl AsyncWrite for BinaryWsStreamWithEarlyData {
-    fn poll_write(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<Result<usize, Error>> {
+    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<std::io::Result<usize>> {
         debug_log!("ws-0-rtt poll w");
         if !self.is_write_early_data {
             loop {
@@ -117,29 +100,17 @@ impl AsyncWrite for BinaryWsStreamWithEarlyData {
                     return Poll::Ready(Ok(self.as_mut().early_data_len));
                 } else {
                     let mut req = self.as_mut().req.take().unwrap();
-                    if let Some(v) = req
-                        .headers_mut()
-                        .get_mut(&self.as_mut().early_data_header_name)
-                    {
+                    if let Some(v) = req.headers_mut().get_mut(&self.as_mut().early_data_header_name) {
                         debug_log!("ws-0-rtt early data buf len:{}", buf.len());
-                        self.as_mut().early_data_len =
-                            cmp::min(self.as_mut().early_data_len, buf.len());
-                        let header_value =
-                            URL_SAFE_NO_PAD.encode(&buf[..self.as_mut().early_data_len]);
-                        *v = HeaderValue::from_bytes(header_value.as_bytes())
-                            .expect("base64 encode error");
+                        self.as_mut().early_data_len = std::cmp::min(self.as_mut().early_data_len, buf.len());
+                        let header_value = URL_SAFE_NO_PAD.encode(&buf[..self.as_mut().early_data_len]);
+                        *v = HeaderValue::from_bytes(header_value.as_bytes()).expect("base64 encode error");
                         debug_log!("header base64 str:{}", header_value);
-                        debug_log!(
-                            "max_e_d:{}->{}",
-                            self.as_mut().early_data_header_name,
-                            v.len()
-                        );
+                        debug_log!("max_e_d:{}->{}", self.as_mut().early_data_header_name, v.len());
                     }
                     let io = self.as_mut().stream.take().unwrap();
                     let config = self.as_mut().ws_config.take();
-                    self.as_mut().ws_stream_future = Some(
-                        BinaryWsStreamWithEarlyData::build_stream_impl(io, req, config),
-                    );
+                    self.as_mut().ws_stream_future = Some(BinaryWsStreamWithEarlyData::build_stream_impl(io, req, config));
                 }
             }
         }
@@ -151,7 +122,7 @@ impl AsyncWrite for BinaryWsStreamWithEarlyData {
         }
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         debug_log!("ws-0-rtt poll f");
         if !self.is_write_early_data {
             if self.as_mut().flush_waker.is_none() {
@@ -159,8 +130,7 @@ impl AsyncWrite for BinaryWsStreamWithEarlyData {
             }
             return Poll::Pending;
         }
-        let this = self.get_mut();
-        match &mut this.stream {
+        match &mut self.get_mut().stream {
             None => {
                 unreachable!()
             }
@@ -168,13 +138,12 @@ impl AsyncWrite for BinaryWsStreamWithEarlyData {
         }
     }
 
-    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         debug_log!("ws-0-rtt poll s");
         if !self.is_write_early_data {
             ready!(self.as_mut().poll_flush(cx))?;
         }
-        let this = self.get_mut();
-        match &mut this.stream {
+        match &mut self.get_mut().stream {
             None => {
                 unreachable!()
             }

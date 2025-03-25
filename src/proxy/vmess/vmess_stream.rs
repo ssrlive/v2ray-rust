@@ -1,12 +1,9 @@
 use aes_gcm::Aes128Gcm;
-use std::hash::Hasher;
-use std::io;
-use std::io::{Error, ErrorKind};
-use std::pin::Pin;
-use std::task::{Context, Poll};
-
 use bytes::{BufMut, BytesMut};
 use chacha20poly1305::ChaCha20Poly1305;
+use std::hash::Hasher;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 use crate::common::aead_helper::AeadCipherHelper;
 use crate::common::fnv1a::Fnv1aHasher;
@@ -16,10 +13,7 @@ use crate::proxy::vmess::aead::{VmessAeadReader, VmessAeadWriter, VmessSecurity}
 use crate::proxy::vmess::aead_header::{VmessHeaderReader, seal_vmess_aead_header};
 use crate::proxy::vmess::vmess_option::VmessOption;
 use crate::proxy::{Address, UdpRead, UdpWrite};
-use crate::{
-    debug_log, impl_async_read, impl_async_useful_traits, impl_async_write, impl_flush_shutdown,
-    md5,
-};
+use crate::{debug_log, impl_async_read, impl_async_useful_traits, impl_async_write, impl_flush_shutdown, md5};
 use gentian::gentian;
 use rand::random;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, ReadBuf};
@@ -45,10 +39,10 @@ pub struct VmessStream<S> {
     header_reader: Box<VmessHeaderReader>,
     header_buffer: BytesMut,
     header_pos: usize,
-    state_1: u32,                              // for state machine generator
-    state_2: u32,                              // for state machine generator
-    header_write_res: Poll<io::Result<usize>>, // for state machine generator
-    header_read_res: Poll<io::Result<()>>,     // for state machine generator
+    state_1: u32,                                   // for state machine generator
+    state_2: u32,                                   // for state machine generator
+    header_write_res: Poll<std::io::Result<usize>>, // for state machine generator
+    header_read_res: Poll<std::io::Result<()>>,     // for state machine generator
 }
 
 impl<S> VmessStream<S> {
@@ -78,10 +72,7 @@ impl<S> VmessStream<S> {
         let mut hasher = Fnv1aHasher::default();
         hasher.write(&buf);
         buf.put_u32(hasher.finish() as u32);
-        let cmd_key = md5!(
-            self.option.uuid.as_bytes(),
-            b"c48619fe-8f02-49e0-b9e9-edf763e17e21"
-        );
+        let cmd_key = md5!(self.option.uuid.as_bytes(), b"c48619fe-8f02-49e0-b9e9-edf763e17e21");
         self.header_buffer = seal_vmess_aead_header(&cmd_key, &buf)
     }
 
@@ -133,16 +124,14 @@ impl<S> VmessStream<S> {
                 key[0..16].copy_from_slice(&tmp);
                 let tmp = md5!(&key[16..]);
                 key[16..32].copy_from_slice(&tmp);
-                writer_cipher =
-                    VmessSecurity::ChaCha20Poly1305(ChaCha20Poly1305::new_with_slice(&key));
+                writer_cipher = VmessSecurity::ChaCha20Poly1305(ChaCha20Poly1305::new_with_slice(&key));
                 writer = VmessAeadWriter::new(req_body_iv, writer_cipher);
 
                 let tmp = md5!(resp_body_key);
                 key[0..16].copy_from_slice(&tmp);
                 let tmp = md5!(&key[16..]);
                 key[16..32].copy_from_slice(&tmp);
-                reader_cipher =
-                    VmessSecurity::ChaCha20Poly1305(ChaCha20Poly1305::new_with_slice(&key));
+                reader_cipher = VmessSecurity::ChaCha20Poly1305(ChaCha20Poly1305::new_with_slice(&key));
                 reader = VmessAeadReader::new(resp_body_iv, reader_cipher);
             }
             _ => {
@@ -156,11 +145,7 @@ impl<S> VmessStream<S> {
             writer,
             salt,
             respv,
-            header_reader: Box::new(VmessHeaderReader::new(
-                &resp_body_key[..16],
-                &resp_body_iv[..16],
-                respv,
-            )),
+            header_reader: Box::new(VmessHeaderReader::new(&resp_body_key[..16], &resp_body_iv[..16], respv)),
             header_buffer: BytesMut::new(),
             header_pos: 0,
             state_1: 0,
@@ -178,40 +163,30 @@ where
     S: AsyncReadExt + Unpin,
 {
     #[gentian]
-    #[gentian_attr(state=this.state_1,ret_val=Err(ErrorKind::UnexpectedEof.into()).into())]
-    fn poll_read_header(
-        this: &mut VmessStream<S>,
-        ctx: &mut Context<'_>,
-        dst: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
+    #[gentian_attr(state=self.state_1,ret_val=Err(std::io::ErrorKind::UnexpectedEof.into()).into())]
+    fn poll_read_header(self: &mut VmessStream<S>, ctx: &mut Context<'_>, dst: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
         loop {
             // wait resp
-            while !(*this.header_reader).received_resp() {
-                this.header_read_res =
-                    (*this.header_reader).poll_read_decrypted(ctx, &mut this.stream);
-                if this.header_read_res.is_error() {
-                    return std::mem::replace(&mut this.header_read_res, Poll::Pending);
-                } else if this.header_read_res.is_ready() {
+            while !(*self.header_reader).received_resp() {
+                self.header_read_res = (*self.header_reader).poll_read_decrypted(ctx, &mut self.stream);
+                if self.header_read_res.is_error() {
+                    return std::mem::replace(&mut self.header_read_res, Poll::Pending);
+                } else if self.header_read_res.is_ready() {
                     break;
                 }
                 co_yield(Poll::Pending);
             }
             // steal buffer
-            this.reader.buffer = this.header_reader.get_buffer();
+            self.reader.buffer = self.header_reader.get_buffer();
             // streaming
             loop {
-                co_yield(this.reader.poll_read_decrypted(ctx, &mut this.stream, dst));
+                co_yield(self.reader.poll_read_decrypted(ctx, &mut self.stream, dst));
             }
         }
     }
 
-    fn priv_poll_read(
-        self: Pin<&mut Self>,
-        ctx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
-        let this = self.get_mut();
-        Self::poll_read_header(this, ctx, buf)
+    fn priv_poll_read(self: Pin<&mut Self>, ctx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
+        self.get_mut().poll_read_header(ctx, buf)
     }
 }
 
@@ -220,28 +195,23 @@ where
     S: AsyncWrite + Unpin,
 {
     #[gentian]
-    #[gentian_attr(state=this.state_2,ret_val=Err(ErrorKind::UnexpectedEof.into()).into())]
-    fn poll_write_header(
-        this: &mut VmessStream<S>,
-        ctx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<io::Result<usize>> {
+    #[gentian_attr(state=self.state_2,ret_val=Err(std::io::ErrorKind::UnexpectedEof.into()).into())]
+    fn poll_write_header(self: &mut VmessStream<S>, ctx: &mut Context<'_>, buf: &[u8]) -> Poll<std::io::Result<usize>> {
         loop {
             // 1. write header req
             debug_log!("vmess try write aead header");
-            while this.header_pos < this.header_buffer.len() {
-                this.header_write_res = Pin::new(&mut this.stream)
-                    .poll_write(ctx, &this.header_buffer[this.header_pos..]);
-                this.header_pos += this.header_write_res.get_poll_res();
-                if this.header_write_res.is_error() {
+            while self.header_pos < self.header_buffer.len() {
+                self.header_write_res = Pin::new(&mut self.stream).poll_write(ctx, &self.header_buffer[self.header_pos..]);
+                self.header_pos += self.header_write_res.get_poll_res();
+                if self.header_write_res.is_error() {
                     debug_log!("vmess try write aead header error");
-                    return std::mem::replace(&mut this.header_write_res, Poll::Pending);
+                    return std::mem::replace(&mut self.header_write_res, Poll::Pending);
                 }
-                if this.header_pos < this.header_buffer.len() {
+                if self.header_pos < self.header_buffer.len() {
                     debug_log!(
                         "vmess header pos:{},header buffer len:{}",
-                        this.header_pos,
-                        this.header_buffer.len()
+                        self.header_pos,
+                        self.header_buffer.len()
                     );
                     co_yield(Poll::Pending);
                 }
@@ -249,20 +219,15 @@ where
             debug_log!("vmess try write aead header done");
             // 2. ready to write data
             loop {
-                co_yield(this.writer.poll_write_encrypted(ctx, &mut this.stream, buf));
+                co_yield(self.writer.poll_write_encrypted(ctx, &mut self.stream, buf));
             }
         }
     }
 
     impl_flush_shutdown!();
 
-    fn priv_poll_write(
-        self: Pin<&mut Self>,
-        ctx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<io::Result<usize>> {
-        let this = self.get_mut();
-        Self::poll_write_header(this, ctx, buf)
+    fn priv_poll_write(self: Pin<&mut Self>, ctx: &mut Context<'_>, buf: &[u8]) -> Poll<std::io::Result<usize>> {
+        self.get_mut().poll_write_header(ctx, buf)
     }
 }
 
@@ -271,11 +236,7 @@ impl_async_useful_traits!(VmessStream);
 impl<S: AsyncWrite + AsyncRead + Send + Unpin> UdpRead for VmessStream<S> {
     /// Vmess can't implement full-cone nat.
     /// So we just return the first address in handshake packet.
-    fn poll_recv_from(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<Address>> {
+    fn poll_recv_from(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<Address>> {
         let addr = self.option.addr.clone();
         self.priv_poll_read(cx, buf).map_ok(|_| addr)
     }
@@ -288,7 +249,7 @@ impl<S: AsyncWrite + AsyncRead + Send + Unpin> UdpWrite for VmessStream<S> {
         cx: &mut Context<'_>,
         buf: &[u8],
         #[allow(unused_variables)] target: &Address,
-    ) -> Poll<io::Result<usize>> {
+    ) -> Poll<std::io::Result<usize>> {
         #[cfg(feature = "strict-vmess-udp")]
         {
             use crate::common::new_error;
@@ -296,7 +257,7 @@ impl<S: AsyncWrite + AsyncRead + Send + Unpin> UdpWrite for VmessStream<S> {
                 return Err(new_error(
                     "Vmess can't change target udp address different from first packet. Try using a full-cone protocol instead.",
                 ))
-                    .into();
+                .into();
             }
         }
         self.priv_poll_write(cx, buf)

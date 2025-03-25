@@ -1,4 +1,3 @@
-use std::io;
 use std::mem::MaybeUninit;
 
 use crate::common::LW_BUFFER_SIZE;
@@ -17,11 +16,7 @@ pub use copy_with_capacity::copy_with_capacity_and_counter;
 
 pub mod copy_with_capacity;
 
-pub fn poll_read_buf<T>(
-    io: &mut T,
-    cx: &mut Context<'_>,
-    buf: &mut BytesMut,
-) -> Poll<io::Result<usize>>
+pub fn poll_read_buf<T>(io: &mut T, cx: &mut Context<'_>, buf: &mut BytesMut) -> Poll<std::io::Result<usize>>
 where
     T: AsyncRead + Unpin,
 {
@@ -51,15 +46,15 @@ where
 #[allow(dead_code)]
 pub trait PollUtil {
     type T;
-    fn drop_poll_result(self) -> Poll<io::Result<()>>;
+    fn drop_poll_result(self) -> Poll<std::io::Result<()>>;
     fn is_pending_or_error(&self) -> bool;
     fn is_error(&self) -> bool;
     fn get_poll_res(&self) -> Self::T;
 }
 
-impl<T: Default + Copy> PollUtil for Poll<io::Result<T>> {
+impl<T: Default + Copy> PollUtil for Poll<std::io::Result<T>> {
     type T = T;
-    fn drop_poll_result(self) -> Poll<io::Result<()>> {
+    fn drop_poll_result(self) -> Poll<std::io::Result<()>> {
         match self {
             Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
             Poll::Ready(Ok(_)) => Poll::Ready(Ok(())),
@@ -91,11 +86,7 @@ impl<T: Default + Copy> PollUtil for Poll<io::Result<T>> {
         }
     }
 }
-pub async fn relay<T1, T2>(
-    inbound_stream: T1,
-    outbound_stream: T2,
-    relay_buffer_size: usize,
-) -> io::Result<()>
+pub async fn relay<T1, T2>(inbound_stream: T1, outbound_stream: T2, relay_buffer_size: usize) -> std::io::Result<()>
 where
     T1: AsyncRead + AsyncWrite + Unpin,
     T2: AsyncRead + AsyncWrite + Unpin,
@@ -121,7 +112,7 @@ pub async fn relay_with_atomic_counter<T1, T2>(
     outbound_up: &AtomicU64,
     outbound_down: &AtomicU64,
     relay_buffer_size: usize,
-) -> io::Result<()>
+) -> std::io::Result<()>
 where
     T1: AsyncRead + AsyncWrite + Unpin,
     T2: AsyncRead + AsyncWrite + Unpin,

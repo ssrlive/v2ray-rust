@@ -1,22 +1,17 @@
 use crate::proxy::{BoxProxyStream, BoxProxyUdpStream};
 use crate::proxy::{ChainableStreamBuilder, ProtocolType};
 use async_trait::async_trait;
-use std::io;
 
 #[derive(Clone)]
 pub struct BlackHoleStreamBuilder;
 
 #[async_trait]
 impl ChainableStreamBuilder for BlackHoleStreamBuilder {
-    async fn build_tcp(&self, _io: BoxProxyStream) -> io::Result<BoxProxyStream> {
+    async fn build_tcp(&self, _io: BoxProxyStream) -> std::io::Result<BoxProxyStream> {
         unimplemented!()
     }
 
-    async fn build_udp(
-        &self,
-        _io: BoxProxyUdpStream,
-        _build_tcp_inside: bool,
-    ) -> io::Result<BoxProxyUdpStream> {
+    async fn build_udp(&self, _io: BoxProxyUdpStream, _build_tcp_inside: bool) -> std::io::Result<BoxProxyUdpStream> {
         unimplemented!()
     }
 

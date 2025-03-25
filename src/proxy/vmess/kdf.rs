@@ -14,10 +14,8 @@ pub const KDF_SALT_CONST_AEAD_RESP_HEADER_PAYLOAD_IV: &[u8; 19] = b"AEAD Resp He
 pub const KDF_SALT_CONST_VMESS_AEAD_KDF: &[u8; 14] = b"VMess AEAD KDF";
 pub const KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_AEAD_KEY: &[u8; 21] = b"VMess Header AEAD Key";
 pub const KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_AEAD_IV: &[u8; 23] = b"VMess Header AEAD Nonce";
-pub const KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_LENGTH_AEAD_KEY: &[u8; 28] =
-    b"VMess Header AEAD Key_Length";
-pub const KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_LENGTH_AEAD_IV: &[u8; 30] =
-    b"VMess Header AEAD Nonce_Length";
+pub const KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_LENGTH_AEAD_KEY: &[u8; 28] = b"VMess Header AEAD Key_Length";
+pub const KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_LENGTH_AEAD_IV: &[u8; 30] = b"VMess Header AEAD Nonce_Length";
 macro_rules! impl_hmac_with_hasher {
     ($name:tt, $hasher:tt) => {
         #[derive(Clone)]
@@ -134,10 +132,7 @@ impl_hmac_with_hasher!(VmessKdf3, VmessKdf2);
 
 #[inline]
 fn get_vmess_kdf_1(key1: &[u8]) -> VmessKdf1 {
-    VmessKdf1::new(
-        HmacSha256::new_from_slice(KDF_SALT_CONST_VMESS_AEAD_KDF).unwrap(),
-        key1,
-    )
+    VmessKdf1::new(HmacSha256::new_from_slice(KDF_SALT_CONST_VMESS_AEAD_KDF).unwrap(), key1)
 }
 
 pub fn vmess_kdf_1_one_shot(id: &[u8], key1: &[u8]) -> [u8; 32] {
@@ -180,8 +175,7 @@ mod vmess_kdf_test {
             KDF_SALT_CONST_AEAD_RESP_HEADER_LEN_KEY,
         );
         h.update(id);
-        let expected =
-            decode_hex("2745934f3b987d077b4082ec0f76060f33d7f4d89dd172f434c275bf91b1360b").unwrap();
+        let expected = decode_hex("2745934f3b987d077b4082ec0f76060f33d7f4d89dd172f434c275bf91b1360b").unwrap();
         let value = h.finalize();
         assert_eq!(&expected, &value);
         let value = vmess_kdf_3_one_shot(

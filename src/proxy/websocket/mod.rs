@@ -11,15 +11,13 @@ use crate::common::new_error;
 use crate::debug_log;
 use crate::proxy::websocket::ws_early_data::BinaryWsStreamWithEarlyData;
 use crate::proxy::{
-    BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType, ProxySteam,
-    ProxyUdpStream, UdpRead, UdpWrite,
+    BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType, ProxySteam, ProxyUdpStream, UdpRead, UdpWrite,
 };
 use futures_util::Stream;
 use futures_util::ready;
 use futures_util::sink::Sink;
 use std::collections::BTreeMap;
 use std::{
-    io,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -32,11 +30,7 @@ pub struct BinaryWsStream<T: ProxySteam> {
 }
 
 impl<T: ProxySteam> AsyncRead for BinaryWsStream<T> {
-    fn poll_read(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
+    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut tokio::io::ReadBuf<'_>) -> Poll<std::io::Result<()>> {
         loop {
             if let Some(read_buffer) = &mut self.read_buffer {
                 if read_buffer.len() <= buf.remaining() {
@@ -69,10 +63,7 @@ impl<T: ProxySteam> AsyncRead for BinaryWsStream<T> {
                     return Poll::Ready(Ok(()));
                 }
                 _ => {
-                    return Poll::Ready(Err(new_error(format!(
-                        "invalid message type {:?}",
-                        message
-                    ))));
+                    return Poll::Ready(Err(new_error(format!("invalid message type {:?}", message))));
                 }
             }
         }
@@ -80,44 +71,28 @@ impl<T: ProxySteam> AsyncRead for BinaryWsStream<T> {
 }
 
 impl<T: ProxySteam> AsyncWrite for BinaryWsStream<T> {
-    fn poll_write(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<Result<usize, io::Error>> {
-        ready!(Pin::new(&mut self.inner).poll_ready(cx))
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{:?}", e)))?;
+    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize, std::io::Error>> {
+        use std::io::{Error, ErrorKind::Other};
+        ready!(Pin::new(&mut self.inner).poll_ready(cx)).map_err(|e| Error::new(Other, e))?;
         let message = Message::Binary(buf.to_vec().into());
-        Pin::new(&mut self.inner)
-            .start_send(message)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{:?}", e)))?;
-        let _p = Pin::new(&mut self.inner)
-            .poll_flush(cx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{:?}", e)))?;
+        Pin::new(&mut self.inner).start_send(message).map_err(|e| Error::new(Other, e))?;
+        let _p = Pin::new(&mut self.inner).poll_flush(cx).map_err(|e| Error::new(Other, e))?;
         Poll::Ready(Ok(buf.len()))
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), std::io::Error>> {
         let inner = Pin::new(&mut self.inner);
-        inner
-            .poll_flush(cx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{:?}", e)))
+        inner.poll_flush(cx).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
     }
 
-    fn poll_shutdown(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Result<(), io::Error>> {
+    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), std::io::Error>> {
         debug_log!("shut down");
-        ready!(Pin::new(&mut self.inner).poll_ready(cx))
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{:?}", e)))?;
+        ready!(Pin::new(&mut self.inner).poll_ready(cx)).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", e)))?;
         let message = Message::Close(None);
         let _ = Pin::new(&mut self.inner).start_send(message);
 
         let inner = Pin::new(&mut self.inner);
-        inner
-            .poll_close(cx)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("close {:?}", e)))
+        inner.poll_close(cx).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
     }
 }
 
@@ -127,10 +102,7 @@ impl<T: ProxyUdpStream> UdpWrite for BinaryWsStream<T> {}
 
 impl<T: ProxySteam> BinaryWsStream<T> {
     pub fn new(inner: WebSocketStream<T>) -> Self {
-        Self {
-            inner,
-            read_buffer: None,
-        }
+        Self { inner, read_buffer: None }
     }
 }
 
@@ -189,7 +161,7 @@ impl BinaryWsStreamBuilder {
 
 #[async_trait]
 impl ChainableStreamBuilder for BinaryWsStreamBuilder {
-    async fn build_tcp(&self, io: BoxProxyStream) -> io::Result<BoxProxyStream> {
+    async fn build_tcp(&self, io: BoxProxyStream) -> std::io::Result<BoxProxyStream> {
         let req = self.req();
         if self.max_early_data > 0 {
             debug_log!("build tcp ws-0-rtt");
@@ -201,9 +173,7 @@ impl ChainableStreamBuilder for BinaryWsStreamBuilder {
                 self.max_early_data,
             )));
         }
-        let (stream, resp) = client_async_with_config(req, io, self.ws_config)
-            .await
-            .map_err(new_error)?;
+        let (stream, resp) = client_async_with_config(req, io, self.ws_config).await.map_err(new_error)?;
         if resp.status() != StatusCode::SWITCHING_PROTOCOLS {
             return Err(new_error(format!("bad status: {}", resp.status())));
         }
@@ -211,11 +181,7 @@ impl ChainableStreamBuilder for BinaryWsStreamBuilder {
         Ok(Box::new(BinaryWsStream::new(stream)))
     }
 
-    async fn build_udp(
-        &self,
-        io: BoxProxyUdpStream,
-        build_tcp_inside: bool,
-    ) -> io::Result<BoxProxyUdpStream> {
+    async fn build_udp(&self, io: BoxProxyUdpStream, build_tcp_inside: bool) -> std::io::Result<BoxProxyUdpStream> {
         if build_tcp_inside {
             let req = self.req();
             if self.max_early_data > 0 {
@@ -229,9 +195,7 @@ impl ChainableStreamBuilder for BinaryWsStreamBuilder {
                 ));
                 return Ok(io);
             }
-            let (stream, resp) = client_async_with_config(req, io, self.ws_config)
-                .await
-                .map_err(new_error)?;
+            let (stream, resp) = client_async_with_config(req, io, self.ws_config).await.map_err(new_error)?;
             if resp.status() != StatusCode::SWITCHING_PROTOCOLS {
                 return Err(new_error(format!("bad status: {}", resp.status())));
             }

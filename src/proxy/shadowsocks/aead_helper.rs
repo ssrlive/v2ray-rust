@@ -17,9 +17,7 @@ impl CipherKind {
             }
             CipherKind::Aes128Gcm => CipherInner::Aes128Gcm(Aes128Gcm::new_with_slice(sub_key)),
             CipherKind::Aes256Gcm => CipherInner::Aes256Gcm(Aes256Gcm::new_with_slice(sub_key)),
-            CipherKind::ChaCha20Poly1305 => {
-                CipherInner::ChaCha20Poly1305(ChaCha20Poly1305::new_with_slice(sub_key))
-            }
+            CipherKind::ChaCha20Poly1305 => CipherInner::ChaCha20Poly1305(ChaCha20Poly1305::new_with_slice(sub_key)),
         }
     }
     #[inline]
@@ -70,15 +68,9 @@ impl CipherInner {
     }
     pub fn decrypt_slice(&self, nonce: &[u8], ciphertext_in_plaintext_out: &mut [u8]) -> bool {
         match self {
-            CipherInner::Aes128Gcm(c) => {
-                c.decrypt_inplace_with_slice(nonce, b"", ciphertext_in_plaintext_out)
-            }
-            CipherInner::Aes256Gcm(c) => {
-                c.decrypt_inplace_with_slice(nonce, b"", ciphertext_in_plaintext_out)
-            }
-            CipherInner::ChaCha20Poly1305(c) => {
-                c.decrypt_inplace_with_slice(nonce, b"", ciphertext_in_plaintext_out)
-            }
+            CipherInner::Aes128Gcm(c) => c.decrypt_inplace_with_slice(nonce, b"", ciphertext_in_plaintext_out),
+            CipherInner::Aes256Gcm(c) => c.decrypt_inplace_with_slice(nonce, b"", ciphertext_in_plaintext_out),
+            CipherInner::ChaCha20Poly1305(c) => c.decrypt_inplace_with_slice(nonce, b"", ciphertext_in_plaintext_out),
         }
     }
 }
@@ -101,16 +93,13 @@ impl AeadCipher {
     }
     pub fn encrypt(&mut self, plaintext_in_ciphertext_out: &mut [u8]) {
         let nonce = &self.nonce[..self.nlen];
-        self.cipher
-            .encrypt_slice(nonce, plaintext_in_ciphertext_out);
+        self.cipher.encrypt_slice(nonce, plaintext_in_ciphertext_out);
         self.increase_nonce();
     }
 
     pub fn decrypt(&mut self, ciphertext_in_plaintext_out: &mut [u8]) -> bool {
         let nonce = &self.nonce[..self.nlen];
-        let ret = self
-            .cipher
-            .decrypt_slice(nonce, ciphertext_in_plaintext_out);
+        let ret = self.cipher.decrypt_slice(nonce, ciphertext_in_plaintext_out);
         self.increase_nonce();
         ret
     }

@@ -21,8 +21,6 @@
 //! +--------+-----------+-----------+
 //! ```
 use byte_string::ByteStr;
-use std::io::{self, Cursor, Error, ErrorKind};
-
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -37,14 +35,7 @@ use gentian::gentian;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 /// Encrypt payload into ShadowSocks UDP encrypted packet
-pub fn encrypt_payload(
-    context: &BloomContext,
-    method: CipherKind,
-    key: &[u8],
-    addr: &Address,
-    payload: &[u8],
-    dst: &mut BytesMut,
-) {
+pub fn encrypt_payload(context: &BloomContext, method: CipherKind, key: &[u8], addr: &Address, payload: &[u8], dst: &mut BytesMut) {
     match method {
         CipherKind::None => {
             dst.reserve(addr.serialized_len() + payload.len());
@@ -56,14 +47,7 @@ pub fn encrypt_payload(
     }
 }
 
-fn encrypt_payload_aead(
-    context: &BloomContext,
-    method: CipherKind,
-    key: &[u8],
-    addr: &Address,
-    payload: &[u8],
-    dst: &mut BytesMut,
-) {
+fn encrypt_payload_aead(context: &BloomContext, method: CipherKind, key: &[u8], addr: &Address, payload: &[u8], dst: &mut BytesMut) {
     let salt_len = method.salt_len();
     let addr_len = addr.serialized_len();
 
@@ -93,14 +77,10 @@ fn encrypt_payload_aead(
 }
 
 /// Decrypt payload from ShadowSocks UDP encrypted packet
-pub fn decrypt_payload(
-    method: CipherKind,
-    key: &[u8],
-    payload: &mut [u8],
-) -> io::Result<(usize, Address)> {
+pub fn decrypt_payload(method: CipherKind, key: &[u8], payload: &mut [u8]) -> std::io::Result<(usize, Address)> {
     match method {
         CipherKind::None => {
-            let mut cur = Cursor::new(payload);
+            let mut cur = std::io::Cursor::new(payload);
             match Address::read_from_cursor(&mut cur) {
                 Ok(address) => {
                     let pos = cur.position() as usize;
@@ -109,7 +89,7 @@ pub fn decrypt_payload(
                     Ok((payload.len() - pos, address))
                 }
                 Err(..) => {
-                    let err = Error::new(ErrorKind::InvalidData, "parse udp packet Address failed");
+                    let err = std::io::Error::new(std::io::ErrorKind::InvalidData, "parse udp packet Address failed");
                     Err(err)
                 }
             }
@@ -119,15 +99,11 @@ pub fn decrypt_payload(
     }
 }
 
-fn decrypt_payload_aead(
-    method: CipherKind,
-    key: &[u8],
-    payload: &mut [u8],
-) -> io::Result<(usize, Address)> {
+fn decrypt_payload_aead(method: CipherKind, key: &[u8], payload: &mut [u8]) -> std::io::Result<(usize, Address)> {
     let plen = payload.len();
     let salt_len = method.salt_len();
     if plen < salt_len {
-        let err = Error::new(ErrorKind::InvalidData, "udp packet too short for salt");
+        let err = std::io::Error::new(std::io::ErrorKind::InvalidData, "udp packet too short for salt");
         return Err(err);
     }
 
@@ -140,11 +116,11 @@ fn decrypt_payload_aead(
     let mut cipher = AeadCipher::new(method, key, salt);
 
     if data.len() < tag_len {
-        return Err(Error::new(ErrorKind::Other, "udp packet too short for tag"));
+        return Err(std::io::Error::new(std::io::ErrorKind::Other, "udp packet too short for tag"));
     }
 
     if !cipher.decrypt(data) {
-        return Err(Error::new(ErrorKind::Other, "invalid tag-in"));
+        return Err(std::io::Error::new(std::io::ErrorKind::Other, "invalid tag-in"));
     }
 
     // Truncate TAG
@@ -162,15 +138,15 @@ fn decrypt_payload_aead(
     Ok((data_length, addr))
 }
 
-fn parse_packet(buf: &[u8]) -> io::Result<(usize, Address)> {
-    let mut cur = Cursor::new(buf);
+fn parse_packet(buf: &[u8]) -> std::io::Result<(usize, Address)> {
+    let mut cur = std::io::Cursor::new(buf);
     match Address::read_from_cursor(&mut cur) {
         Ok(address) => {
             let pos = cur.position() as usize;
             Ok((pos, address))
         }
         Err(..) => {
-            let err = Error::new(ErrorKind::InvalidData, "parse udp packet Address failed");
+            let err = std::io::Error::new(std::io::ErrorKind::InvalidData, "parse udp packet Address failed");
             Err(err)
         }
     }
@@ -184,17 +160,11 @@ pub struct ShadowSocksUdpStream<T> {
     method: CipherKind,
     key: Bytes,
     state: u32,
-    write_res: Poll<io::Result<usize>>, // for state machine generator
+    write_res: Poll<std::io::Result<usize>>, // for state machine generator
 }
 
 impl<T> ShadowSocksUdpStream<T> {
-    pub fn new(
-        io: T,
-        addr: Address,
-        context: SharedBloomContext,
-        method: CipherKind,
-        key: Bytes,
-    ) -> Self {
+    pub fn new(io: T, addr: Address, context: SharedBloomContext, method: CipherKind, key: Bytes) -> Self {
         debug_log!("build ss udp stream, addr is:{}", addr);
         Self {
             stream: io,
@@ -210,88 +180,53 @@ impl<T> ShadowSocksUdpStream<T> {
 }
 
 impl<T: UdpRead + Unpin> ShadowSocksUdpStream<T> {
-    fn priv_poll_recv_from(
-        this: &mut ShadowSocksUdpStream<T>,
-        cx: &mut Context<'_>,
-        dst: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<Address>> {
-        let r = Pin::new(&mut this.stream);
-        let _ = ready!(r.poll_recv_from(cx, dst))?;
-        let (n, addr) = decrypt_payload(this.method, &this.key, dst.filled_mut())?;
-        dst.set_filled(n);
-        debug_log!("recv from addr:{}, len:{}", addr, dst.filled().len());
+    fn priv_poll_recv_from(self: &mut ShadowSocksUdpStream<T>, c: &mut Context<'_>, d: &mut ReadBuf<'_>) -> Poll<std::io::Result<Address>> {
+        let r = Pin::new(&mut self.stream);
+        let _ = ready!(r.poll_recv_from(c, d))?;
+        let (n, addr) = decrypt_payload(self.method, &self.key, d.filled_mut())?;
+        d.set_filled(n);
+        debug_log!("recv from addr:{}, len:{}", addr, d.filled().len());
         Ok(addr).into()
     }
 }
 impl<T: UdpRead + Unpin> UdpRead for ShadowSocksUdpStream<T> {
-    fn poll_recv_from(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<Address>> {
-        let this = self.get_mut();
-        Self::priv_poll_recv_from(this, cx, buf)
+    fn poll_recv_from(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<Address>> {
+        self.get_mut().priv_poll_recv_from(cx, buf)
     }
 }
 
 impl<T: UdpWrite + Unpin> UdpWrite for ShadowSocksUdpStream<T> {
-    fn poll_send_to(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-        target: &Address,
-    ) -> Poll<io::Result<usize>> {
-        let this = self.get_mut();
-        this.priv_poll_write(cx, buf, target)
+    fn poll_send_to(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8], target: &Address) -> Poll<std::io::Result<usize>> {
+        self.get_mut().priv_poll_write(cx, buf, target)
     }
 }
 
 impl<T: ProxyUdpStream> AsyncRead for ShadowSocksUdpStream<T> {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-        _buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
+    fn poll_read(self: Pin<&mut Self>, _cx: &mut Context<'_>, _buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
         unimplemented!()
     }
 }
 
 impl<T: ProxyUdpStream> AsyncWrite for ShadowSocksUdpStream<T> {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-        _buf: &[u8],
-    ) -> Poll<Result<usize, Error>> {
+    fn poll_write(self: Pin<&mut Self>, _cx: &mut Context<'_>, _buf: &[u8]) -> Poll<std::io::Result<usize>> {
         unimplemented!();
     }
 
-    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         unimplemented!();
     }
 
-    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         unimplemented!();
     }
 }
 
 impl<T: UdpWrite + Unpin> ShadowSocksUdpStream<T> {
     #[gentian]
-    #[gentian_attr(ret_val=Err(ErrorKind::UnexpectedEof.into()).into())]
-    fn priv_poll_write(
-        &mut self,
-        cx: &mut Context<'_>,
-        data: &[u8],
-        addr: &Address,
-    ) -> Poll<io::Result<usize>> {
+    #[gentian_attr(ret_val=Err(std::io::ErrorKind::UnexpectedEof.into()).into())]
+    fn priv_poll_write(&mut self, cx: &mut Context<'_>, data: &[u8], addr: &Address) -> Poll<std::io::Result<usize>> {
         loop {
-            encrypt_payload(
-                &self.context,
-                self.method,
-                &self.key,
-                addr,
-                data,
-                &mut self.write_buffer,
-            );
+            encrypt_payload(&self.context, self.method, &self.key, addr, data, &mut self.write_buffer);
             debug_log!(
                 "encrypted buffer len:{},data len:{},tar addr:{}",
                 self.write_buffer.len(),
@@ -299,11 +234,7 @@ impl<T: UdpWrite + Unpin> ShadowSocksUdpStream<T> {
                 addr
             );
             debug_log!("poll sendto {}, before addr:{}", self.addr, addr);
-            self.write_res = co_await(Pin::new(&mut self.stream).poll_send_to(
-                cx,
-                &self.write_buffer,
-                &self.addr,
-            ));
+            self.write_res = co_await(Pin::new(&mut self.stream).poll_send_to(cx, &self.write_buffer, &self.addr));
             self.write_buffer.clear();
             co_yield(std::mem::replace(&mut self.write_res, Poll::Pending));
         }

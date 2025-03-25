@@ -1,10 +1,7 @@
 use crate::common::sha224;
 use crate::proxy::trojan::trojan_stream::RequestHeader;
-use crate::proxy::{
-    Address, BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType,
-};
+use crate::proxy::{Address, BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType};
 use async_trait::async_trait;
-use std::io;
 
 use self::trojan_stream::TrojanUdpStream;
 
@@ -32,16 +29,12 @@ impl TrojanStreamBuilder {
 
 #[async_trait]
 impl ChainableStreamBuilder for TrojanStreamBuilder {
-    async fn build_tcp(&self, mut io: BoxProxyStream) -> io::Result<BoxProxyStream> {
+    async fn build_tcp(&self, mut io: BoxProxyStream) -> std::io::Result<BoxProxyStream> {
         let header = RequestHeader::TcpConnect(self.password, self.addr.clone());
         header.write_to(&mut io).await.map(|_| io)
     }
 
-    async fn build_udp(
-        &self,
-        mut io: BoxProxyUdpStream,
-        build_tcp_inside: bool,
-    ) -> io::Result<BoxProxyUdpStream> {
+    async fn build_udp(&self, mut io: BoxProxyUdpStream, build_tcp_inside: bool) -> std::io::Result<BoxProxyUdpStream> {
         if build_tcp_inside {
             let header = RequestHeader::TcpConnect(self.password, self.addr.clone());
             return header.write_to(&mut io).await.map(|_| io);

@@ -11,7 +11,6 @@ use actix_server::Server;
 use actix_service::fn_service;
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
-use std::io;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
@@ -53,40 +52,22 @@ impl ConfigServerBuilder {
             api_server_addr,
         }
     }
-    pub fn run(mut self) -> io::Result<()> {
+    pub fn run(mut self) -> std::io::Result<()> {
         let router = self.router.clone();
         let enable_api_server = self.enable_api_server;
         if enable_api_server {
             COUNTER_MAP.get_or_init(|| {
                 let mut map = HashMap::new();
                 for k in self.inner_map.keys() {
-                    map.insert(
-                        format!("outbound>>>{}>>>traffic>>>uplink", k),
-                        AtomicU64::new(0),
-                    );
-                    map.insert(
-                        format!("outbound>>>{}>>>traffic>>>downlink", k),
-                        AtomicU64::new(0),
-                    );
+                    map.insert(format!("outbound>>>{}>>>traffic>>>uplink", k), AtomicU64::new(0));
+                    map.insert(format!("outbound>>>{}>>>traffic>>>downlink", k), AtomicU64::new(0));
                 }
                 for k in self.inbounds.iter() {
-                    map.insert(
-                        format!("inbound>>>{}>>>traffic>>>uplink", k.tag),
-                        AtomicU64::new(0),
-                    );
-                    map.insert(
-                        format!("inbound>>>{}>>>traffic>>>downlink", k.tag),
-                        AtomicU64::new(0),
-                    );
+                    map.insert(format!("inbound>>>{}>>>traffic>>>uplink", k.tag), AtomicU64::new(0));
+                    map.insert(format!("inbound>>>{}>>>traffic>>>downlink", k.tag), AtomicU64::new(0));
                 }
-                map.insert(
-                    "inbound>>>dokodemo>>>traffic>>>uplink".to_string(),
-                    AtomicU64::new(0),
-                );
-                map.insert(
-                    "inbound>>>dokodemo>>>traffic>>>downlink".to_string(),
-                    AtomicU64::new(0),
-                );
+                map.insert("inbound>>>dokodemo>>>traffic>>>uplink".to_string(), AtomicU64::new(0));
+                map.insert("inbound>>>dokodemo>>>traffic>>>downlink".to_string(), AtomicU64::new(0));
                 map
             });
         }
@@ -131,30 +112,16 @@ impl ConfigServerBuilder {
                                     return relay(io, out_stream, self.relay_buffer_size).await;
                                 }
                                 let ob = router.match_socket_addr(&dokodemo_door_addr);
-                                log::info!(
-                                    "routing dokodemo addr {} to outbound:{}",
-                                    dokodemo_door_addr,
-                                    ob
-                                );
+                                log::info!("routing dokodemo addr {} to outbound:{}", dokodemo_door_addr, ob);
                                 let stream_builder = inner_map.get(ob).unwrap();
-                                let out_stream =
-                                    stream_builder.build_tcp(dokodemo_door_addr.into()).await?;
+                                let out_stream = stream_builder.build_tcp(dokodemo_door_addr.into()).await?;
                                 if enable_api_server {
-                                    let in_down = COUNTER_MAP
-                                        .get()
-                                        .unwrap()
-                                        .get("inbound>>>dokodemo>>>traffic>>>downlink");
-                                    let in_up = COUNTER_MAP
-                                        .get()
-                                        .unwrap()
-                                        .get("inbound>>>dokodemo>>>traffic>>>uplink");
-                                    let out_down =
-                                        format!("outbound>>>{}>>>traffic>>>downlink", ob);
+                                    let in_down = COUNTER_MAP.get().unwrap().get("inbound>>>dokodemo>>>traffic>>>downlink");
+                                    let in_up = COUNTER_MAP.get().unwrap().get("inbound>>>dokodemo>>>traffic>>>uplink");
+                                    let out_down = format!("outbound>>>{}>>>traffic>>>downlink", ob);
                                     let out_up = format!("outbound>>>{}>>>traffic>>>uplink", ob);
-                                    let out_down =
-                                        COUNTER_MAP.get().unwrap().get(out_down.as_str()).unwrap();
-                                    let out_up =
-                                        COUNTER_MAP.get().unwrap().get(out_up.as_str()).unwrap();
+                                    let out_down = COUNTER_MAP.get().unwrap().get(out_down.as_str()).unwrap();
+                                    let out_up = COUNTER_MAP.get().unwrap().get(out_up.as_str()).unwrap();
                                     relay_with_atomic_counter(
                                         io,
                                         out_stream,
@@ -208,18 +175,13 @@ impl ConfigServerBuilder {
                                     return http_inbound.serve_http_conn(io).await;
                                 }
                                 let peer_ip = io.peer_addr()?.ip();
-                                let addr = if enable_udp {
-                                    Some(SocketAddr::new(peer_ip, 0))
-                                } else {
-                                    None
-                                };
+                                let addr = if enable_udp { Some(SocketAddr::new(peer_ip, 0)) } else { None };
                                 let local_addr = io.local_addr()?;
                                 let stream = Socks5Stream::new(io, local_addr);
                                 let mut udp_socket = None;
                                 let x = stream.init(addr, &mut udp_socket).await?;
                                 if let Some(udp_socket) = udp_socket {
-                                    Socks5UdpDatagram::run(udp_socket, router, inner_map, x.0)
-                                        .await?;
+                                    Socks5UdpDatagram::run(udp_socket, router, inner_map, x.0).await?;
                                     return Ok(());
                                 }
                                 let ob = router.match_addr(&x.1);
@@ -227,13 +189,10 @@ impl ConfigServerBuilder {
                                 let stream_builder = inner_map.get(ob).unwrap();
                                 let out_stream = stream_builder.build_tcp(x.1).await?;
                                 if enable_api_server {
-                                    let out_down =
-                                        format!("outbound>>>{}>>>traffic>>>downlink", ob);
+                                    let out_down = format!("outbound>>>{}>>>traffic>>>downlink", ob);
                                     let out_up = format!("outbound>>>{}>>>traffic>>>uplink", ob);
-                                    let out_down =
-                                        COUNTER_MAP.get().unwrap().get(out_down.as_str()).unwrap();
-                                    let out_up =
-                                        COUNTER_MAP.get().unwrap().get(out_up.as_str()).unwrap();
+                                    let out_down = COUNTER_MAP.get().unwrap().get(out_down.as_str()).unwrap();
+                                    let out_up = COUNTER_MAP.get().unwrap().get(out_up.as_str()).unwrap();
                                     relay_with_atomic_counter(
                                         x.0,
                                         out_stream,

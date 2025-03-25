@@ -2,14 +2,11 @@ use crate::common::openssl_bytes_to_key;
 use crate::proxy::shadowsocks::aead_helper::CipherKind;
 use crate::proxy::shadowsocks::context::SharedBloomContext;
 use crate::proxy::shadowsocks::crypto_io::CryptoStream;
-use crate::proxy::{
-    Address, BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType,
-};
+use crate::proxy::{Address, BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType};
 
 use crate::proxy::shadowsocks::udp_crypto_io::ShadowSocksUdpStream;
 use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
-use std::io;
 
 mod aead;
 pub mod aead_helper;
@@ -23,8 +20,7 @@ fn ss_hkdf_sha1(iv_or_salt: &[u8], key: &[u8]) -> [u8; 64] {
     let ikm = key;
     let mut okm = [0u8; 64];
     let hk = Hkdf::<Sha1>::new(Some(iv_or_salt), ikm);
-    hk.expand(b"ss-subkey", &mut okm)
-        .expect("ss hkdf sha1 failed");
+    hk.expand(b"ss-subkey", &mut okm).expect("ss hkdf sha1 failed");
     okm
 }
 
@@ -37,12 +33,7 @@ pub struct ShadowsocksBuilder {
 }
 
 impl ShadowsocksBuilder {
-    pub fn new_from_config(
-        addr: Address,
-        password: &str,
-        method: CipherKind,
-        context: SharedBloomContext,
-    ) -> ShadowsocksBuilder {
+    pub fn new_from_config(addr: Address, password: &str, method: CipherKind, context: SharedBloomContext) -> ShadowsocksBuilder {
         let mut key = BytesMut::with_capacity(method.key_len());
         unsafe {
             key.set_len(key.capacity());
@@ -59,13 +50,8 @@ impl ShadowsocksBuilder {
 
 #[async_trait]
 impl ChainableStreamBuilder for ShadowsocksBuilder {
-    async fn build_tcp(&self, io: BoxProxyStream) -> io::Result<BoxProxyStream> {
-        let mut stream = Box::new(CryptoStream::new(
-            self.context.clone(),
-            io,
-            self.key.clone(),
-            self.method,
-        ));
+    async fn build_tcp(&self, io: BoxProxyStream) -> std::io::Result<BoxProxyStream> {
+        let mut stream = Box::new(CryptoStream::new(self.context.clone(), io, self.key.clone(), self.method));
         let res = self.addr.write_to_stream(&mut stream).await;
         match res {
             Ok(_) => Ok(stream),
@@ -73,18 +59,9 @@ impl ChainableStreamBuilder for ShadowsocksBuilder {
         }
     }
 
-    async fn build_udp(
-        &self,
-        io: BoxProxyUdpStream,
-        build_tcp_inside: bool,
-    ) -> io::Result<BoxProxyUdpStream> {
+    async fn build_udp(&self, io: BoxProxyUdpStream, build_tcp_inside: bool) -> std::io::Result<BoxProxyUdpStream> {
         if build_tcp_inside {
-            let mut stream = Box::new(CryptoStream::new(
-                self.context.clone(),
-                io,
-                self.key.clone(),
-                self.method,
-            ));
+            let mut stream = Box::new(CryptoStream::new(self.context.clone(), io, self.key.clone(), self.method));
             let res = self.addr.write_to_stream(&mut stream).await;
             return match res {
                 Ok(_) => Ok(stream),

@@ -8,9 +8,7 @@ pub trait AeadCipherHelper: AeadInPlace {
     fn encrypt_inplace_with_slice(&self, nonce: &[u8], aad: &[u8], buffer: &mut [u8]) {
         let tag_pos = buffer.len() - Self::TagSize::to_usize();
         let (msg, tag) = buffer.split_at_mut(tag_pos);
-        let x = self
-            .encrypt_in_place_detached(nonce.into(), aad, msg)
-            .expect("encryption failure!");
+        let x = self.encrypt_in_place_detached(nonce.into(), aad, msg).expect("encryption failure!");
         tag.copy_from_slice(&x);
     }
     fn decrypt_inplace_with_slice(&self, nonce: &[u8], aad: &[u8], buffer: &mut [u8]) -> bool {

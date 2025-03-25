@@ -1,15 +1,11 @@
 use crate::common::{LW_BUFFER_SIZE, new_error};
-use crate::proxy::{
-    BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType, UdpRead, UdpWrite,
-};
+use crate::proxy::{BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType, UdpRead, UdpWrite};
 use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
 use futures_util::ready;
 use h2::{RecvStream, SendStream};
 use http::{Request, Uri, Version};
 use std::collections::HashMap;
-use std::io;
-use std::io::{Error, ErrorKind};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -23,12 +19,7 @@ pub struct Http2StreamBuilder {
 }
 
 impl Http2StreamBuilder {
-    pub fn new(
-        hosts: Vec<String>,
-        headers: HashMap<String, String>,
-        method: http::Method,
-        path: http::uri::PathAndQuery,
-    ) -> Self {
+    pub fn new(hosts: Vec<String>, headers: HashMap<String, String>, method: http::Method, path: http::uri::PathAndQuery) -> Self {
         Self {
             hosts,
             headers,
@@ -37,7 +28,7 @@ impl Http2StreamBuilder {
         }
     }
 
-    fn req(&self) -> io::Result<Request<()>> {
+    fn req(&self) -> std::io::Result<Request<()>> {
         let uri_idx = rand::random::<u64>() as usize % self.hosts.len();
         let uri: Uri = {
             Uri::builder()
@@ -78,15 +69,11 @@ macro_rules! http2_build_tcp_impl {
 
 #[async_trait]
 impl ChainableStreamBuilder for Http2StreamBuilder {
-    async fn build_tcp(&self, io: BoxProxyStream) -> io::Result<BoxProxyStream> {
+    async fn build_tcp(&self, io: BoxProxyStream) -> std::io::Result<BoxProxyStream> {
         http2_build_tcp_impl!(self, io);
     }
 
-    async fn build_udp(
-        &self,
-        io: BoxProxyUdpStream,
-        build_tcp_inside: bool,
-    ) -> io::Result<BoxProxyUdpStream> {
+    async fn build_udp(&self, io: BoxProxyUdpStream, build_tcp_inside: bool) -> std::io::Result<BoxProxyUdpStream> {
         if build_tcp_inside {
             http2_build_tcp_impl!(self, io);
         } else {
@@ -127,11 +114,7 @@ impl Http2Stream {
 
 impl AsyncRead for Http2Stream {
     #[inline]
-    fn poll_read(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
+    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut tokio::io::ReadBuf<'_>) -> Poll<std::io::Result<()>> {
         if !self.buffer.is_empty() {
             let to_read = std::cmp::min(buf.remaining(), self.buffer.len());
             let data = self.buffer.split_to(to_read);
@@ -146,14 +129,12 @@ impl AsyncRead for Http2Stream {
                 if data.len() > to_read {
                     self.buffer.extend_from_slice(&data[to_read..]);
                 };
+                use std::io::{Error, ErrorKind::ConnectionReset};
                 // increase recv window
                 self.recv
                     .flow_control()
                     .release_capacity(to_read)
-                    .map_or_else(
-                        |e| Err(Error::new(ErrorKind::ConnectionReset, e)),
-                        |_| Ok(()),
-                    )
+                    .map_or_else(|e| Err(Error::new(ConnectionReset, e)), |_| Ok(()))
             }
             // no more data frames
             // maybe trailer
@@ -165,43 +146,36 @@ impl AsyncRead for Http2Stream {
 
 impl AsyncWrite for Http2Stream {
     #[inline]
-    fn poll_write(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<io::Result<usize>> {
+    fn poll_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<std::io::Result<usize>> {
         self.send.reserve_capacity(buf.len());
         Poll::Ready(match ready!(self.send.poll_capacity(cx)) {
             Some(Ok(to_write)) => self
                 .send
                 .send_data(Bytes::from(buf[..to_write].to_owned()), false)
-                .map_or_else(
-                    |e| Err(Error::new(ErrorKind::BrokenPipe, e)),
-                    |_| Ok(to_write),
-                ),
+                .map_or_else(|e| Err(std::io::Error::new(std::io::ErrorKind::BrokenPipe, e)), |_| Ok(to_write)),
             // is_send_streaming returns false
             // which indicates the state is
             // neither open nor half_close_remote
-            _ => Err(Error::new(ErrorKind::BrokenPipe, "broken pipe")),
+            _ => Err(std::io::Error::new(std::io::ErrorKind::BrokenPipe, "broken pipe")),
         })
     }
 
     #[inline]
-    fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<io::Result<()>> {
+    fn poll_flush(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         Poll::Ready(Ok(()))
     }
 
     #[inline]
-    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         self.send.reserve_capacity(0);
-        Poll::Ready(ready!(self.send.poll_capacity(cx)).map_or(
-            Err(Error::new(ErrorKind::BrokenPipe, "broken pipe")),
-            |_| {
+        use std::io::{Error, ErrorKind::BrokenPipe};
+        Poll::Ready(
+            ready!(self.send.poll_capacity(cx)).map_or(Err(Error::new(BrokenPipe, "broken pipe")), |_| {
                 self.send
                     .send_data(Bytes::new(), true)
-                    .map_or_else(|e| Err(Error::new(ErrorKind::BrokenPipe, e)), |_| Ok(()))
-            },
-        ))
+                    .map_or_else(|e| Err(Error::new(BrokenPipe, e)), |_| Ok(()))
+            }),
+        )
     }
 }
 

@@ -13,7 +13,6 @@ use bytes::Buf;
 use bytes::BytesMut;
 use futures_util::ready;
 use gentian::gentian;
-use std::cmp;
 use std::io::ErrorKind;
 
 const CMD_TCP_CONNECT: u8 = 0x01;
@@ -55,11 +54,7 @@ pub enum RequestHeader {
 
 impl RequestHeader {
     #[allow(dead_code)]
-    pub async fn read_from<R>(
-        stream: &mut R,
-        valid_hash: &[u8],
-        first_packet: &mut Vec<u8>,
-    ) -> io::Result<Self>
+    pub async fn read_from<R>(stream: &mut R, valid_hash: &[u8], first_packet: &mut Vec<u8>) -> io::Result<Self>
     where
         R: AsyncRead + Unpin,
     {
@@ -72,10 +67,7 @@ impl RequestHeader {
 
         if valid_hash != hash_buf {
             first_packet.extend_from_slice(&hash_buf);
-            return Err(new_error(format!(
-                "invalid password hash: {}",
-                String::from_utf8_lossy(&hash_buf)
-            )));
+            return Err(new_error(format!("invalid password hash: {}", String::from_utf8_lossy(&hash_buf))));
         }
 
         let mut crlf_buf = [0u8; 2];
@@ -147,47 +139,30 @@ impl<T: AsyncWrite + Unpin> TrojanUdpStream<T> {
 }
 
 impl<T: AsyncRead + Send + Unpin> UdpRead for TrojanUdpStream<T> {
-    fn poll_recv_from(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<Address>> {
-        let this = self.get_mut();
-        this.reader
-            .priv_poll_read(&mut this.stream, cx, buf)
-            .map_ok(|_| this.reader.take_addr())
+    fn poll_recv_from(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<io::Result<Address>> {
+        let mut_self = self.get_mut();
+        mut_self
+            .reader
+            .priv_poll_read(&mut mut_self.stream, cx, buf)
+            .map_ok(|_| mut_self.reader.take_addr())
     }
 }
 
 impl<T: AsyncWrite + Send + Unpin> UdpWrite for TrojanUdpStream<T> {
-    fn poll_send_to(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-        target: &Address,
-    ) -> Poll<io::Result<usize>> {
-        let this = self.get_mut();
-        this.writer
-            .priv_poll_write(&mut this.stream, cx, buf, target)
+    fn poll_send_to(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8], target: &Address) -> Poll<io::Result<usize>> {
+        let mut_self = self.get_mut();
+        mut_self.writer.priv_poll_write(&mut mut_self.stream, cx, buf, target)
     }
 }
 
 impl<T: AsyncRead + Unpin> AsyncRead for TrojanUdpStream<T> {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-        _buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
+    fn poll_read(self: Pin<&mut Self>, _cx: &mut Context<'_>, _buf: &mut ReadBuf<'_>) -> Poll<io::Result<()>> {
         unimplemented!()
     }
 }
 
 impl<T: AsyncWrite + Unpin> AsyncWrite for TrojanUdpStream<T> {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-        _buf: &[u8],
-    ) -> Poll<Result<usize, io::Error>> {
+    fn poll_write(self: Pin<&mut Self>, _cx: &mut Context<'_>, _buf: &[u8]) -> Poll<Result<usize, io::Error>> {
         unimplemented!()
     }
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
@@ -226,12 +201,7 @@ impl TrojanUdpReader {
 
     #[gentian]
     #[gentian_attr(state=self.read_state,ret_val=Err(ErrorKind::UnexpectedEof.into()).into())]
-    fn priv_poll_read<R>(
-        &mut self,
-        r: &mut R,
-        cx: &mut Context<'_>,
-        dst: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>>
+    fn priv_poll_read<R>(&mut self, r: &mut R, cx: &mut Context<'_>, dst: &mut ReadBuf<'_>) -> Poll<io::Result<()>>
     where
         R: AsyncRead + Unpin,
     {
@@ -311,12 +281,7 @@ impl TrojanUdpWriter {
     }
 
     #[inline]
-    fn write_data<W>(
-        &mut self,
-        w: &mut W,
-        ctx: &mut Context<'_>,
-        buffer: &[u8],
-    ) -> Poll<io::Result<usize>>
+    fn write_data<W>(&mut self, w: &mut W, ctx: &mut Context<'_>, buffer: &[u8]) -> Poll<io::Result<usize>>
     where
         W: AsyncWrite + Unpin,
     {
@@ -324,10 +289,7 @@ impl TrojanUdpWriter {
             let n = ready!(Pin::new(&mut *w).poll_write(ctx, &buffer[self.pos..]))?;
             self.pos += n;
             if n == 0 {
-                return Poll::Ready(Err(io::Error::new(
-                    ErrorKind::WriteZero,
-                    "write zero byte into writer",
-                )));
+                return Poll::Ready(Err(io::Error::new(ErrorKind::WriteZero, "write zero byte into writer")));
             }
         }
         Poll::Ready(Ok(self.data_len))
@@ -342,10 +304,7 @@ impl TrojanUdpWriter {
             let n = ready!(Pin::new(&mut *w).poll_write(ctx, &self.buffer[self.pos..]))?;
             self.pos += n;
             if n == 0 {
-                return Poll::Ready(Err(io::Error::new(
-                    ErrorKind::WriteZero,
-                    "write zero byte into writer",
-                )));
+                return Poll::Ready(Err(io::Error::new(ErrorKind::WriteZero, "write zero byte into writer")));
             }
         }
         Poll::Ready(Ok(self.data_len))
@@ -353,13 +312,7 @@ impl TrojanUdpWriter {
 
     #[gentian]
     #[gentian_attr(ret_val=Err(ErrorKind::UnexpectedEof.into()).into())]
-    fn priv_poll_write<W>(
-        &mut self,
-        w: &mut W,
-        cx: &mut Context<'_>,
-        data: &[u8],
-        addr: &Address,
-    ) -> Poll<io::Result<usize>>
+    fn priv_poll_write<W>(&mut self, w: &mut W, cx: &mut Context<'_>, data: &[u8], addr: &Address) -> Poll<io::Result<usize>>
     where
         W: AsyncWrite + Unpin,
     {

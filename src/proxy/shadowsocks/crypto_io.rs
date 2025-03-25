@@ -1,7 +1,6 @@
 //! IO facilities for TCP relay
 
 use std::{
-    io,
     marker::Unpin,
     pin::Pin,
     task::{Context, Poll},
@@ -55,12 +54,7 @@ impl<S: Unpin> Unpin for CryptoStream<S> {}
 
 impl<S> CryptoStream<S> {
     /// Create a new CryptoStream with the underlying stream connection
-    pub fn new(
-        context: SharedBloomContext,
-        stream: S,
-        enc_key: Bytes,
-        method: CipherKind,
-    ) -> CryptoStream<S> {
+    pub fn new(context: SharedBloomContext, stream: S, enc_key: Bytes, method: CipherKind) -> CryptoStream<S> {
         let key = enc_key;
 
         if method == CipherKind::None {
@@ -97,12 +91,7 @@ impl<S> CryptoStream<S> {
             stream,
             dec: None,
             enc,
-            read_status: ReadStatus::WaitIv(
-                context,
-                BytesMut::with_capacity(prev_len),
-                method,
-                key,
-            ),
+            read_status: ReadStatus::WaitIv(context, BytesMut::with_capacity(prev_len), method, key),
         }
     }
 
@@ -120,7 +109,7 @@ impl<S> CryptoStream<S>
 where
     S: AsyncRead + Unpin,
 {
-    fn poll_read_handshake(&mut self, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+    fn poll_read_handshake(&mut self, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         if let ReadStatus::WaitIv(ref ctx, ref mut buf, method, ref key) = self.read_status {
             while buf.len() != buf.capacity() {
                 let n = ready!(poll_read_buf(&mut self.stream, cx, buf))?;
@@ -149,17 +138,13 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn priv_poll_read(
-        self: Pin<&mut Self>,
-        ctx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
-        let this = self.get_mut();
-        ready!(this.poll_read_handshake(ctx))?;
+    fn priv_poll_read(self: Pin<&mut Self>, ctx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
+        let mut_self = self.get_mut();
+        ready!(mut_self.poll_read_handshake(ctx))?;
 
-        match *this.dec.as_mut().unwrap() {
-            DecryptedReader::None => Pin::new(&mut this.stream).poll_read(ctx, buf),
-            DecryptedReader::Aead(ref mut r) => r.poll_read_decrypted(ctx, &mut this.stream, buf),
+        match *mut_self.dec.as_mut().unwrap() {
+            DecryptedReader::None => Pin::new(&mut mut_self.stream).poll_read(ctx, buf),
+            DecryptedReader::Aead(ref mut r) => r.poll_read_decrypted(ctx, &mut mut_self.stream, buf),
         }
     }
 }
@@ -168,15 +153,11 @@ impl<S> CryptoStream<S>
 where
     S: AsyncWrite + Unpin,
 {
-    fn priv_poll_write(
-        self: Pin<&mut Self>,
-        ctx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<io::Result<usize>> {
-        let this = self.get_mut();
-        match this.enc {
-            EncryptedWriter::None => Pin::new(&mut this.stream).poll_write(ctx, buf),
-            EncryptedWriter::Aead(ref mut w) => w.poll_write_encrypted(ctx, &mut this.stream, buf),
+    fn priv_poll_write(self: Pin<&mut Self>, ctx: &mut Context<'_>, buf: &[u8]) -> Poll<std::io::Result<usize>> {
+        let mut_self = self.get_mut();
+        match mut_self.enc {
+            EncryptedWriter::None => Pin::new(&mut mut_self.stream).poll_write(ctx, buf),
+            EncryptedWriter::Aead(ref mut w) => w.poll_write_encrypted(ctx, &mut mut_self.stream, buf),
         }
     }
 

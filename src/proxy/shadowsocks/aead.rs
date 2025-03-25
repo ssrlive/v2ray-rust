@@ -1,6 +1,5 @@
 use std::{
     cmp,
-    io::{self, ErrorKind},
     marker::Unpin,
     pin::Pin,
     slice,
@@ -28,7 +27,7 @@ pub struct DecryptedReader {
     state: u32,
     data_length: usize,
     minimal_data_to_put: usize,
-    read_res: Poll<io::Result<()>>,
+    read_res: Poll<std::io::Result<()>>,
     read_zero: bool,
 }
 
@@ -48,13 +47,8 @@ impl DecryptedReader {
 
     impl_read_utils!();
     #[gentian]
-    #[gentian_attr(ret_val=Err(ErrorKind::UnexpectedEof.into()).into())]
-    pub fn poll_read_decrypted<R>(
-        &mut self,
-        ctx: &mut Context<'_>,
-        r: &mut R,
-        dst: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>>
+    #[gentian_attr(ret_val=Err(std::io::ErrorKind::UnexpectedEof.into()).into())]
+    pub fn poll_read_decrypted<R>(&mut self, ctx: &mut Context<'_>, r: &mut R, dst: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>>
     where
         R: AsyncRead + Unpin,
     {
@@ -66,10 +60,8 @@ impl DecryptedReader {
                 }
                 return std::mem::replace(&mut self.read_res, Poll::Pending);
             }
-            self.data_length = DecryptedReader::decrypt_length(
-                &mut self.cipher,
-                &mut self.buffer.as_mut()[0..self.tag_size + 2],
-            )? + self.tag_size;
+            self.data_length =
+                DecryptedReader::decrypt_length(&mut self.cipher, &mut self.buffer.as_mut()[0..self.tag_size + 2])? + self.tag_size;
             self.buffer.advance(self.tag_size + 2);
             self.read_reserve(self.data_length);
             self.read_res = co_await(self.read_at_least(r, ctx, self.data_length));
@@ -79,11 +71,8 @@ impl DecryptedReader {
                 }
                 return std::mem::replace(&mut self.read_res, Poll::Pending);
             }
-            if !self
-                .cipher
-                .decrypt(&mut self.buffer.as_mut()[0..self.data_length])
-            {
-                return Poll::Ready(Err(io::Error::new(ErrorKind::Other, "invalid aead tag")));
+            if !self.cipher.decrypt(&mut self.buffer.as_mut()[0..self.data_length]) {
+                return Poll::Ready(Err(std::io::Error::new(std::io::ErrorKind::Other, "invalid aead tag")));
             }
             self.data_length -= self.tag_size;
             while self.calc_data_to_put(dst) != 0 {
@@ -96,17 +85,17 @@ impl DecryptedReader {
         }
     }
 
-    fn decrypt_length(cipher: &mut AeadCipher, m: &mut [u8]) -> io::Result<usize> {
+    fn decrypt_length(cipher: &mut AeadCipher, m: &mut [u8]) -> std::io::Result<usize> {
         let plen = {
             if !cipher.decrypt(m) {
-                return Err(io::Error::new(ErrorKind::Other, "invalid tag-in"));
+                return Err(std::io::Error::new(std::io::ErrorKind::Other, "invalid tag-in"));
             }
 
             u16::from_be_bytes([m[0], m[1]]) as usize
         };
         if plen > MAX_PACKET_SIZE {
-            let err = io::Error::new(
-                ErrorKind::InvalidData,
+            let err = std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
                 format!(
                     "buffer size too large ({:#x}), AEAD encryption protocol requires buffer to be smaller than 0x3FFF, the higher two bits must be set to zero",
                     plen
@@ -126,7 +115,7 @@ pub struct EncryptedWriter {
     buf: BytesMut,
     pos: usize,
     data_len: usize,
-    write_res: Poll<io::Result<usize>>,
+    write_res: Poll<std::io::Result<usize>>,
 }
 
 impl EncryptedWriter {
@@ -148,21 +137,15 @@ impl EncryptedWriter {
     }
 
     #[gentian]
-    #[gentian_attr(ret_val=Err(ErrorKind::UnexpectedEof.into()).into())]
-    pub fn poll_write_encrypted<W>(
-        &mut self,
-        ctx: &mut Context<'_>,
-        w: &mut W,
-        mut data: &[u8],
-    ) -> Poll<io::Result<usize>>
+    #[gentian_attr(ret_val=Err(std::io::ErrorKind::UnexpectedEof.into()).into())]
+    pub fn poll_write_encrypted<W>(&mut self, ctx: &mut Context<'_>, w: &mut W, mut data: &[u8]) -> Poll<std::io::Result<usize>>
     where
         W: AsyncWrite + Unpin,
     {
         loop {
             // we already put nonce
             let minimal_data_to_write = cmp::min(MAX_PACKET_SIZE, data.len());
-            self.buf
-                .reserve(minimal_data_to_write + 2 + self.tag_size * 2);
+            self.buf.reserve(minimal_data_to_write + 2 + self.tag_size * 2);
             data = &data[..minimal_data_to_write];
             self.encrypted_buffer(data);
             self.write_res = co_await(self.write_data(w, ctx));
@@ -172,7 +155,7 @@ impl EncryptedWriter {
     }
 
     #[inline]
-    fn write_data<W>(&mut self, w: &mut W, ctx: &mut Context<'_>) -> Poll<io::Result<usize>>
+    fn write_data<W>(&mut self, w: &mut W, ctx: &mut Context<'_>) -> Poll<std::io::Result<usize>>
     where
         W: AsyncWrite + Unpin,
     {
@@ -180,10 +163,8 @@ impl EncryptedWriter {
             let n = ready!(Pin::new(&mut *w).poll_write(ctx, &self.buf[self.pos..]))?;
             self.pos += n;
             if n == 0 {
-                return Poll::Ready(Err(io::Error::new(
-                    ErrorKind::WriteZero,
-                    "write zero byte into writer",
-                )));
+                use std::io::ErrorKind::WriteZero;
+                return Poll::Ready(Err(std::io::Error::new(WriteZero, "write zero byte into writer")));
             }
         }
         Poll::Ready(Ok(self.data_len))

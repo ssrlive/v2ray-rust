@@ -2,7 +2,6 @@ use crate::debug_log;
 use aes::{Aes128, cipher::BlockDecrypt, cipher::BlockEncrypt, cipher::KeyInit};
 use sha2::Digest;
 use sha2::{Sha224, Sha256};
-use std::io;
 
 pub mod aead_helper;
 pub mod fnv1a;
@@ -12,12 +11,9 @@ pub mod net;
 pub const LW_BUFFER_SIZE: usize = 1024;
 pub const HW_BUFFER_SIZE: usize = 65_536;
 pub const AES_128_GCM_TAG_LEN: usize = 16;
-pub fn new_error<T: ToString>(message: T) -> io::Error {
+pub fn new_error<T: ToString>(message: T) -> std::io::Error {
     debug_log!("new error message:{}", message.to_string());
-    io::Error::new(
-        io::ErrorKind::Other,
-        format!("Error: {}", message.to_string()),
-    )
+    std::io::Error::new(std::io::ErrorKind::Other, format!("Error: {}", message.to_string()))
 }
 
 #[allow(dead_code)]
@@ -107,7 +103,7 @@ mod tests {
     fn bytes_to_key() {
         let mut key1 = [0u8; 32];
         openssl_bytes_to_key("123456".as_bytes(), key1.as_mut());
-        let res=b"\xe1\n\xdc9I\xbaY\xab\xbeV\xe0W\xf2\x0f\x88>e\xb4\xad'\x0b;\x98\t\x8d%j\xb3/[\x8f\xba";
+        let res = b"\xe1\n\xdc9I\xbaY\xab\xbeV\xe0W\xf2\x0f\x88>e\xb4\xad'\x0b;\x98\t\x8d%j\xb3/[\x8f\xba";
         assert_eq!(res, &key1);
     }
 

@@ -1,12 +1,8 @@
 use crate::common::new_error;
 use crate::proxy::udp::ConnectedUdpSocket;
 use bytes::{Buf, BufMut, BytesMut};
-use std::fmt::{Debug, Formatter};
-use std::io::Error;
-use std::io::{Cursor, ErrorKind};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 use std::str::FromStr;
-use std::{fmt, io, vec};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
 
@@ -30,9 +26,9 @@ impl AddressError {
     }
 }
 
-impl From<AddressError> for Error {
+impl From<AddressError> for std::io::Error {
     fn from(e: AddressError) -> Self {
-        Error::new(ErrorKind::Other, format!("address error: {}", e.message))
+        std::io::Error::new(std::io::ErrorKind::Other, format!("address error: {}", e.message))
     }
 }
 impl Default for Address {
@@ -52,17 +48,13 @@ impl FromStr for Address {
                 match (sp.next(), sp.next()) {
                     (Some(dn), Some(port)) => match port.parse::<u16>() {
                         Ok(port) => Ok(Address::DomainNameAddress(dn.to_owned(), port)),
-                        Err(..) => Err(AddressError {
-                            message: s.to_owned(),
-                        }),
+                        Err(..) => Err(AddressError { message: s.to_owned() }),
                     },
                     (Some(dn), None) => {
                         // Assume it is 80 (http's default port)
                         Ok(Address::DomainNameAddress(dn.to_owned(), 80))
                     }
-                    _ => Err(AddressError {
-                        message: s.to_owned(),
-                    }),
+                    _ => Err(AddressError { message: s.to_owned() }),
                 }
             }
         }
@@ -94,7 +86,7 @@ impl Address {
         }
     }
 
-    pub async fn read_from_stream<R>(stream: &mut R) -> Result<Address, Error>
+    pub async fn read_from_stream<R>(stream: &mut R) -> std::io::Result<Address>
     where
         R: AsyncRead + Unpin,
     {
@@ -106,24 +98,17 @@ impl Address {
             Self::ADDR_TYPE_IPV4 => {
                 let mut buf = [0u8; 6];
                 stream.read_exact(&mut buf).await?;
-                let mut cursor = Cursor::new(buf);
+                let mut cursor = std::io::Cursor::new(buf);
 
-                let v4addr = Ipv4Addr::new(
-                    cursor.get_u8(),
-                    cursor.get_u8(),
-                    cursor.get_u8(),
-                    cursor.get_u8(),
-                );
+                let v4addr = Ipv4Addr::new(cursor.get_u8(), cursor.get_u8(), cursor.get_u8(), cursor.get_u8());
                 let port = cursor.get_u16();
-                Ok(Address::SocketAddress(SocketAddr::V4(SocketAddrV4::new(
-                    v4addr, port,
-                ))))
+                Ok(Address::SocketAddress(SocketAddr::V4(SocketAddrV4::new(v4addr, port))))
             }
             Self::ADDR_TYPE_IPV6 => {
                 let mut buf = [0u8; 18];
                 stream.read_exact(&mut buf).await?;
 
-                let mut cursor = Cursor::new(&buf);
+                let mut cursor = std::io::Cursor::new(&buf);
                 let v6addr = Ipv6Addr::new(
                     cursor.get_u16(),
                     cursor.get_u16(),
@@ -136,9 +121,7 @@ impl Address {
                 );
                 let port = cursor.get_u16();
 
-                Ok(Address::SocketAddress(SocketAddr::V6(SocketAddrV6::new(
-                    v6addr, port, 0, 0,
-                ))))
+                Ok(Address::SocketAddress(SocketAddr::V6(SocketAddrV6::new(v6addr, port, 0, 0))))
             }
             Self::ADDR_TYPE_DOMAIN_NAME => {
                 let mut length_buf = [0u8; 1];
@@ -153,7 +136,7 @@ impl Address {
                 let addr = match String::from_utf8(domain_buf.to_vec()) {
                     Ok(addr) => addr,
                     Err(..) => {
-                        return Err(Error::new(ErrorKind::Other, "invalid address encoding"));
+                        return Err(std::io::Error::new(std::io::ErrorKind::Other, "invalid address encoding"));
                     }
                 };
                 let mut port_buf = &addr_buf[length..length + 2];
@@ -163,16 +146,14 @@ impl Address {
             }
             _ => {
                 // Wrong Address Type . Socks5 only supports ipv4, ipv6 and domain name
-                Err(Error::new(
-                    ErrorKind::Other,
-                    format!("not supported address type {:#x}", addr_type),
-                ))
+                use std::io::{Error, ErrorKind::Other};
+                Err(Error::new(Other, format!("not supported address type {:#x}", addr_type)))
             }
         }
     }
 
     #[inline]
-    pub fn read_from_cursor<A: AsRef<[u8]>>(cur: &mut Cursor<A>) -> io::Result<Self> {
+    pub fn read_from_cursor<A: AsRef<[u8]>>(cur: &mut std::io::Cursor<A>) -> std::io::Result<Self> {
         if cur.remaining() < 1 + 1 {
             return Err(new_error("invalid address buffer"));
         }
@@ -184,9 +165,7 @@ impl Address {
                 }
                 let addr = Ipv4Addr::new(cur.get_u8(), cur.get_u8(), cur.get_u8(), cur.get_u8());
                 let port = cur.get_u16();
-                Ok(Address::SocketAddress(SocketAddr::V4(SocketAddrV4::new(
-                    addr, port,
-                ))))
+                Ok(Address::SocketAddress(SocketAddr::V4(SocketAddrV4::new(addr, port))))
             }
             Self::ADDR_TYPE_DOMAIN_NAME => {
                 let domain_len = cur.get_u8() as usize;
@@ -196,8 +175,7 @@ impl Address {
                 let mut domain_name = vec![0u8; domain_len];
                 cur.copy_to_slice(&mut domain_name);
                 let port = cur.get_u16();
-                let domain_name = String::from_utf8(domain_name)
-                    .map_err(|e| new_error(format!("invalid utf8 domain name {}", e)))?;
+                let domain_name = String::from_utf8(domain_name).map_err(|e| new_error(format!("invalid utf8 domain name {}", e)))?;
                 Ok(Address::DomainNameAddress(domain_name, port))
             }
             Self::ADDR_TYPE_IPV6 => {
@@ -215,21 +193,19 @@ impl Address {
                     cur.get_u16(),
                 );
                 let port = cur.get_u16();
-                Ok(Address::SocketAddress(SocketAddr::V6(SocketAddrV6::new(
-                    addr, port, 0, 0,
-                ))))
+                Ok(Address::SocketAddress(SocketAddr::V6(SocketAddrV6::new(addr, port, 0, 0))))
             }
             _ => Err(new_error(format!("unknown address type {}", addr_type))),
         }
     }
 
-    pub fn read_from_buf(buf: &[u8]) -> io::Result<Self> {
-        let mut cur = Cursor::new(buf);
+    pub fn read_from_buf(buf: &[u8]) -> std::io::Result<Self> {
+        let mut cur = std::io::Cursor::new(buf);
         Address::read_from_cursor(&mut cur)
     }
 
     #[inline]
-    pub async fn write_to_stream<W>(&self, writer: &mut W) -> io::Result<()>
+    pub async fn write_to_stream<W>(&self, writer: &mut W) -> std::io::Result<()>
     where
         W: AsyncWrite + Unpin,
     {
@@ -293,28 +269,24 @@ impl Address {
         }
     }
 
-    pub async fn connect_tcp(&self) -> io::Result<TcpStream> {
+    pub async fn connect_tcp(&self) -> std::io::Result<TcpStream> {
         match self {
             Address::SocketAddress(addr) => TcpStream::connect(addr).await,
-            Address::DomainNameAddress(host, port) => {
-                TcpStream::connect((host.as_str(), *port)).await
-            }
+            Address::DomainNameAddress(host, port) => TcpStream::connect((host.as_str(), *port)).await,
         }
     }
 
-    pub async fn connect_udp(&self, socket: UdpSocket) -> io::Result<ConnectedUdpSocket> {
+    pub async fn connect_udp(&self, socket: UdpSocket) -> std::io::Result<ConnectedUdpSocket> {
         match self {
             Address::SocketAddress(addr) => ConnectedUdpSocket::connect(socket, addr).await,
-            Address::DomainNameAddress(host, port) => {
-                ConnectedUdpSocket::connect(socket, (host.as_str(), *port)).await
-            }
+            Address::DomainNameAddress(host, port) => ConnectedUdpSocket::connect(socket, (host.as_str(), *port)).await,
         }
     }
 }
 
-impl Debug for Address {
+impl std::fmt::Debug for Address {
     #[inline]
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
             Address::SocketAddress(ref addr) => write!(f, "{}", addr),
             Address::DomainNameAddress(ref addr, ref port) => write!(f, "{}:{}", addr, port),
@@ -322,9 +294,9 @@ impl Debug for Address {
     }
 }
 
-impl fmt::Display for Address {
+impl std::fmt::Display for Address {
     #[inline]
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
             Address::SocketAddress(ref addr) => write!(f, "{}", addr),
             Address::DomainNameAddress(ref addr, ref port) => write!(f, "{}:{}", addr, port),
@@ -333,9 +305,9 @@ impl fmt::Display for Address {
 }
 
 impl ToSocketAddrs for Address {
-    type Iter = vec::IntoIter<SocketAddr>;
+    type Iter = std::vec::IntoIter<SocketAddr>;
 
-    fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
+    fn to_socket_addrs(&self) -> std::io::Result<std::vec::IntoIter<SocketAddr>> {
         match self.clone() {
             Address::SocketAddress(addr) => Ok(vec![addr].into_iter()),
             Address::DomainNameAddress(addr, port) => (&addr[..], port).to_socket_addrs(),

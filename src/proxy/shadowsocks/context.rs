@@ -38,15 +38,9 @@ impl PingPongBloom {
 
     fn new(is_local: bool) -> std::io::Result<PingPongBloom> {
         let (mut item_count, fp_p) = if is_local {
-            (
-                Self::BF_NUM_ENTRIES_FOR_CLIENT,
-                Self::BF_ERROR_RATE_FOR_CLIENT,
-            )
+            (Self::BF_NUM_ENTRIES_FOR_CLIENT, Self::BF_ERROR_RATE_FOR_CLIENT)
         } else {
-            (
-                Self::BF_NUM_ENTRIES_FOR_SERVER,
-                Self::BF_ERROR_RATE_FOR_SERVER,
-            )
+            (Self::BF_NUM_ENTRIES_FOR_SERVER, Self::BF_ERROR_RATE_FOR_SERVER)
         };
 
         item_count /= 2;

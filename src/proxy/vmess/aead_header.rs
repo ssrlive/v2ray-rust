@@ -8,21 +8,16 @@ use crate::common::aead_helper::AeadCipherHelper;
 use crate::common::net::PollUtil;
 use crate::common::{AES_128_GCM_TAG_LEN, BlockCipherHelper, LW_BUFFER_SIZE, random_iv_or_salt};
 use crate::proxy::vmess::kdf::{
-    KDF_SALT_CONST_AEAD_RESP_HEADER_LEN_IV, KDF_SALT_CONST_AEAD_RESP_HEADER_LEN_KEY,
-    KDF_SALT_CONST_AEAD_RESP_HEADER_PAYLOAD_IV, KDF_SALT_CONST_AEAD_RESP_HEADER_PAYLOAD_KEY,
-    KDF_SALT_CONST_AUTH_ID_ENCRYPTION_KEY, KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_AEAD_IV,
-    KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_AEAD_KEY,
-    KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_LENGTH_AEAD_IV,
-    KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_LENGTH_AEAD_KEY, vmess_kdf_1_one_shot,
-    vmess_kdf_3_one_shot,
+    KDF_SALT_CONST_AEAD_RESP_HEADER_LEN_IV, KDF_SALT_CONST_AEAD_RESP_HEADER_LEN_KEY, KDF_SALT_CONST_AEAD_RESP_HEADER_PAYLOAD_IV,
+    KDF_SALT_CONST_AEAD_RESP_HEADER_PAYLOAD_KEY, KDF_SALT_CONST_AUTH_ID_ENCRYPTION_KEY, KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_AEAD_IV,
+    KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_AEAD_KEY, KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_LENGTH_AEAD_IV,
+    KDF_SALT_CONST_VMESS_HEADER_PAYLOAD_LENGTH_AEAD_KEY, vmess_kdf_1_one_shot, vmess_kdf_3_one_shot,
 };
 use aes::Aes128;
 use aes_gcm::Aes128Gcm;
 use futures_util::ready;
 use gentian::gentian;
-use std::io::ErrorKind;
 use std::task::{Context, Poll};
-use std::{cmp, io};
 use tokio::io::{AsyncRead, ReadBuf};
 
 fn create_auth_id(cmd_key: &[u8], time: &[u8]) -> BytesMut {
@@ -116,20 +111,17 @@ pub struct VmessHeaderReader {
     respv: u8,
     data_length: usize,
     minimal_data_to_put: usize,
-    read_res: Poll<io::Result<()>>,
+    read_res: Poll<std::io::Result<()>>,
     received_resp: bool,
     read_zero: bool,
 }
 
 impl VmessHeaderReader {
     pub fn new(resp_body_key: &[u8], resp_body_iv: &[u8], respv: u8) -> VmessHeaderReader {
-        let header_key =
-            vmess_kdf_1_one_shot(resp_body_key, KDF_SALT_CONST_AEAD_RESP_HEADER_LEN_KEY);
+        let header_key = vmess_kdf_1_one_shot(resp_body_key, KDF_SALT_CONST_AEAD_RESP_HEADER_LEN_KEY);
         let header_iv = vmess_kdf_1_one_shot(resp_body_iv, KDF_SALT_CONST_AEAD_RESP_HEADER_LEN_IV);
-        let payload_key =
-            vmess_kdf_1_one_shot(resp_body_key, KDF_SALT_CONST_AEAD_RESP_HEADER_PAYLOAD_KEY);
-        let payload_iv =
-            vmess_kdf_1_one_shot(resp_body_iv, KDF_SALT_CONST_AEAD_RESP_HEADER_PAYLOAD_IV);
+        let payload_key = vmess_kdf_1_one_shot(resp_body_key, KDF_SALT_CONST_AEAD_RESP_HEADER_PAYLOAD_KEY);
+        let payload_iv = vmess_kdf_1_one_shot(resp_body_iv, KDF_SALT_CONST_AEAD_RESP_HEADER_PAYLOAD_IV);
         let resp_header_len_enc = Aes128Gcm::new_with_slice(&header_key[..16]);
         let resp_header_payload_enc = Aes128Gcm::new_with_slice(&payload_key[..16]);
         let buffer = BytesMut::with_capacity(LW_BUFFER_SIZE * 2);
@@ -155,12 +147,8 @@ impl VmessHeaderReader {
 
     impl_read_utils!();
     #[gentian]
-    #[gentian_attr(ret_val=Err(ErrorKind::UnexpectedEof.into()).into())]
-    pub fn poll_read_decrypted<R>(
-        &mut self,
-        ctx: &mut Context<'_>,
-        r: &mut R,
-    ) -> Poll<io::Result<()>>
+    #[gentian_attr(ret_val=Err(std::io::ErrorKind::UnexpectedEof.into()).into())]
+    pub fn poll_read_decrypted<R>(&mut self, ctx: &mut Context<'_>, r: &mut R) -> Poll<std::io::Result<()>>
     where
         R: AsyncRead + Unpin,
     {
@@ -176,23 +164,18 @@ impl VmessHeaderReader {
             }
             let aad = [0u8; 0];
             debug_log!("vmess: try aead header decrypt len");
-            if !self.resp_header_len_enc.decrypt_inplace_with_slice(
-                &self.header_len_iv,
-                &aad,
-                &mut self.buffer[..18],
-            ) {
+            if !self
+                .resp_header_len_enc
+                .decrypt_inplace_with_slice(&self.header_len_iv, &aad, &mut self.buffer[..18])
+            {
                 debug_log!("vmess: aead header decrypt failed");
-                let err =
-                    io::Error::new(ErrorKind::InvalidData, "decrypted resp header len failed!");
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidData, "decrypted resp header len failed!");
                 return Poll::Ready(Err(err));
             }
             self.data_length = self.buffer.get_u16() as usize;
             self.buffer.advance(16);
             // 2. read data
-            debug_log!(
-                "vmess: try aead header read data, buffer len:{}",
-                self.buffer.len()
-            );
+            debug_log!("vmess: try aead header read data, buffer len:{}", self.buffer.len());
             self.read_res = co_await(self.read_at_least(r, ctx, self.data_length + 16));
             if self.read_res.is_error() {
                 if self.read_zero {
@@ -209,27 +192,23 @@ impl VmessHeaderReader {
                 &mut self.buffer[..self.data_length + 16],
             ) {
                 debug_log!("vmess: aead header data decrypt failed");
-                let err = io::Error::new(
-                    ErrorKind::InvalidData,
-                    "decrypted resp header payload failed!",
-                );
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidData, "decrypted resp header payload failed!");
                 return Poll::Ready(Err(err));
             }
             // tag(16) + vmess command(at least 4)
             if self.buffer.len() < 20 {
                 debug_log!("vmess: buffer length error");
-                let err = io::Error::new(ErrorKind::InvalidData, "unexpected buffer length!");
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidData, "unexpected buffer length!");
                 return Poll::Ready(Err(err));
             }
             if self.buffer[0] != self.respv {
                 debug_log!("vmess: respv error");
-                let err = io::Error::new(ErrorKind::InvalidData, "unexpected response header!");
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidData, "unexpected response header!");
                 return Poll::Ready(Err(err));
             }
             if self.buffer[2] != 0 {
                 debug_log!("vmess: dynamic port error");
-                let err =
-                    io::Error::new(ErrorKind::InvalidData, "dynamic port is not supported now!");
+                let err = std::io::Error::new(std::io::ErrorKind::InvalidData, "dynamic port is not supported now!");
                 return Poll::Ready(Err(err));
             }
             self.buffer.advance(self.data_length + 16);

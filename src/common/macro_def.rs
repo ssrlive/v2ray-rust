@@ -16,22 +16,15 @@ macro_rules! impl_async_write {
         where
             S: AsyncWrite + Unpin,
         {
-            fn poll_write(
-                self: Pin<&mut Self>,
-                cx: &mut Context<'_>,
-                buf: &[u8],
-            ) -> Poll<Result<usize, Error>> {
+            fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<std::io::Result<usize>> {
                 self.priv_poll_write(cx, buf)
             }
 
-            fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
+            fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
                 self.priv_poll_flush(cx)
             }
 
-            fn poll_shutdown(
-                self: Pin<&mut Self>,
-                cx: &mut Context<'_>,
-            ) -> Poll<Result<(), Error>> {
+            fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
                 self.priv_poll_shutdown(cx)
             }
         }
@@ -44,11 +37,7 @@ macro_rules! impl_async_read {
         where
             S: AsyncRead + Unpin,
         {
-            fn poll_read(
-                self: Pin<&mut Self>,
-                cx: &mut Context<'_>,
-                buf: &mut ReadBuf<'_>,
-            ) -> Poll<io::Result<()>> {
+            fn poll_read(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
                 self.priv_poll_read(cx, buf)
             }
         }
@@ -81,17 +70,11 @@ macro_rules! impl_async_useful_traits {
 #[macro_export]
 macro_rules! impl_flush_shutdown {
     () => {
-        fn priv_poll_flush(
-            mut self: Pin<&mut Self>,
-            ctx: &mut Context<'_>,
-        ) -> Poll<io::Result<()>> {
+        fn priv_poll_flush(mut self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
             AsyncWrite::poll_flush(Pin::new(&mut self.stream), ctx)
         }
 
-        fn priv_poll_shutdown(
-            mut self: Pin<&mut Self>,
-            ctx: &mut Context<'_>,
-        ) -> Poll<io::Result<()>> {
+        fn priv_poll_shutdown(mut self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
             AsyncWrite::poll_shutdown(Pin::new(&mut self.stream), ctx)
         }
     };
@@ -116,12 +99,7 @@ macro_rules! impl_read_utils {
         }
 
         #[inline]
-        fn read_at_least<R>(
-            &mut self,
-            r: &mut R,
-            ctx: &mut Context<'_>,
-            length: usize,
-        ) -> Poll<io::Result<()>>
+        fn read_at_least<R>(&mut self, r: &mut R, ctx: &mut Context<'_>, length: usize) -> Poll<std::io::Result<()>>
         where
             R: AsyncRead + Unpin,
         {
@@ -130,7 +108,7 @@ macro_rules! impl_read_utils {
                 let n = ready!(poll_read_buf(r, ctx, &mut self.buffer))?;
                 if n == 0 {
                     self.read_zero = true;
-                    return Err(ErrorKind::UnexpectedEof.into()).into();
+                    return Err(std::io::ErrorKind::UnexpectedEof.into()).into();
                 }
             }
             Poll::Ready(Ok(()))
@@ -139,7 +117,7 @@ macro_rules! impl_read_utils {
         #[allow(dead_code)]
         #[inline]
         fn calc_data_to_put(&mut self, dst: &mut ReadBuf<'_>) -> usize {
-            self.minimal_data_to_put = cmp::min(self.data_length, dst.remaining());
+            self.minimal_data_to_put = std::cmp::min(self.data_length, dst.remaining());
             self.minimal_data_to_put
         }
     };
@@ -148,11 +126,7 @@ macro_rules! impl_read_utils {
 #[macro_export]
 macro_rules! deref_udp_read {
     () => {
-        fn poll_recv_from(
-            mut self: Pin<&mut Self>,
-            cx: &mut Context<'_>,
-            buf: &mut ReadBuf<'_>,
-        ) -> Poll<io::Result<Address>> {
+        fn poll_recv_from(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<Address>> {
             Pin::new(&mut **self).poll_recv_from(cx, buf)
         }
     };
@@ -161,12 +135,7 @@ macro_rules! deref_udp_read {
 #[macro_export]
 macro_rules! deref_udp_write {
     () => {
-        fn poll_send_to(
-            mut self: Pin<&mut Self>,
-            cx: &mut Context<'_>,
-            buf: &[u8],
-            target: &Address,
-        ) -> Poll<io::Result<usize>> {
+        fn poll_send_to(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8], target: &Address) -> Poll<std::io::Result<usize>> {
             Pin::new(&mut **self).poll_send_to(cx, buf, target)
         }
     };

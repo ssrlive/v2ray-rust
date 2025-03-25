@@ -15,33 +15,24 @@ pub use to_chainable_builder::ToChainableStreamBuilder;
 
 use crate::common::new_error;
 use crate::config::deserialize::{
-    EarlyDataUri, default_backlog, default_grpc_path, default_http2_method, default_random_string,
-    default_relay_buffer_size, default_v2ray_geoip_path, default_v2ray_geosite_path,
-    from_str_to_address, from_str_to_cipher_kind, from_str_to_grpc_path, from_str_to_http_method,
-    from_str_to_option_address, from_str_to_path, from_str_to_security_num, from_str_to_uuid,
-    from_str_to_ws_uri,
+    EarlyDataUri, default_backlog, default_grpc_path, default_http2_method, default_random_string, default_relay_buffer_size,
+    default_v2ray_geoip_path, default_v2ray_geosite_path, from_str_to_address, from_str_to_cipher_kind, from_str_to_grpc_path,
+    from_str_to_http_method, from_str_to_option_address, from_str_to_path, from_str_to_security_num, from_str_to_uuid, from_str_to_ws_uri,
 };
 #[cfg(feature = "enable-useless")]
 use crate::config::deserialize::{default_true, from_str_to_sni};
+use crate::config::route::build_router;
 use crate::proxy::shadowsocks::aead_helper::CipherKind;
 use crate::proxy::shadowsocks::context::{BloomContext, SharedBloomContext};
-
 use crate::proxy::{Address, ChainStreamBuilder, ProtocolType};
 
 use serde::Deserialize;
-
-use crate::config::route::build_router;
-
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fs::File;
-use std::io;
 use std::io::Read;
-use std::path::PathBuf;
-use std::sync::Arc;
 
 use uuid::Uuid;
 static SS_LOCAL_SHARED_CONTEXT: once_cell::sync::Lazy<SharedBloomContext> =
-    once_cell::sync::Lazy::new(|| Arc::new(BloomContext::new(true).expect("BloomContext")));
+    once_cell::sync::Lazy::new(|| std::sync::Arc::new(BloomContext::new(true).expect("BloomContext")));
 
 #[derive(Deserialize, Clone)]
 struct VmessConfig {
@@ -49,10 +40,7 @@ struct VmessConfig {
     addr: Address,
     #[serde(deserialize_with = "from_str_to_uuid")]
     uuid: Uuid,
-    #[serde(
-        rename(deserialize = "method"),
-        deserialize_with = "from_str_to_security_num"
-    )]
+    #[serde(rename(deserialize = "method"), deserialize_with = "from_str_to_security_num")]
     security_num: u8,
     tag: String,
 }
@@ -131,7 +119,7 @@ struct Inbounds {
 struct GeoSiteRules {
     tag: String,
     #[serde(default = "default_v2ray_geosite_path")]
-    file_path: PathBuf,
+    file_path: std::path::PathBuf,
     rules: Vec<String>,
     #[serde(default)]
     use_mph: bool,
@@ -141,7 +129,7 @@ struct GeoSiteRules {
 struct GeoIpRules {
     tag: String,
     #[serde(default = "default_v2ray_geoip_path")]
-    file_path: PathBuf,
+    file_path: std::path::PathBuf,
     rules: HashSet<String>,
 }
 
@@ -183,10 +171,7 @@ struct Http2Config {
     hosts: Vec<String>,
     #[serde(default)]
     headers: HashMap<String, String>,
-    #[serde(
-        default = "default_http2_method",
-        deserialize_with = "from_str_to_http_method"
-    )]
+    #[serde(default = "default_http2_method", deserialize_with = "from_str_to_http_method")]
     method: http::Method,
     #[serde(deserialize_with = "from_str_to_path")]
     path: http::uri::PathAndQuery,
@@ -291,19 +276,15 @@ macro_rules! insert_config_map {
 }
 
 impl Config {
-    pub fn read_from_file(filename: String) -> io::Result<Config> {
-        let mut file = File::open(filename)?;
+    pub fn read_from_file(filename: String) -> std::io::Result<Config> {
+        let mut file = std::fs::File::open(filename)?;
         let mut config_string = String::new();
         file.read_to_string(&mut config_string)?;
-        let config = toml::from_str(&config_string).map_err(|e| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("parse config file failed: {}", e),
-            )
-        })?;
+        use std::io::{Error, ErrorKind::InvalidData};
+        let config = toml::from_str(&config_string).map_err(|e| Error::new(InvalidData, format!("parse config file failed: {}", e)))?;
         Ok(config)
     }
-    fn build_inner_map<'a>(&'a self) -> io::Result<HashMap<String, ChainStreamBuilder>> {
+    fn build_inner_map<'a>(&'a self) -> std::io::Result<HashMap<String, ChainStreamBuilder>> {
         // tag->(protocol idx, idx of protocol vec)
         let mut config_map: HashMap<&'a str, (ProtocolType, usize)> = HashMap::new();
         insert_config_map!(self.ss, config_map);
@@ -346,8 +327,7 @@ impl Config {
                             if next_addr.is_none() {
                                 builder.push_last_builder(self[(*p, *idx)].clone_box());
                             } else {
-                                builder
-                                    .push(self[(*p, *idx)].to_chainable_stream_builder(next_addr));
+                                builder.push(self[(*p, *idx)].to_chainable_stream_builder(next_addr));
                             }
                         }
                         _ => {
@@ -362,7 +342,7 @@ impl Config {
         Ok(inner_map)
     }
 
-    pub fn build_server(mut self) -> io::Result<ConfigServerBuilder> {
+    pub fn build_server(mut self) -> std::io::Result<ConfigServerBuilder> {
         if self.default_outbound.is_empty() {
             if let Some(name) = self.outbounds.first() {
                 self.default_outbound = name.tag.clone();
@@ -387,8 +367,8 @@ impl Config {
             self.relay_buffer_size,
             std::mem::take(&mut self.inbounds),
             std::mem::take(&mut self.dokodemo),
-            Arc::new(router),
-            Arc::new(inner_map),
+            std::sync::Arc::new(router),
+            std::sync::Arc::new(inner_map),
             self.enable_api_server,
             self.api_server_addr,
         ))

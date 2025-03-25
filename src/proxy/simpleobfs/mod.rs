@@ -24,11 +24,7 @@ impl ChainableStreamBuilder for SimpleObfsStreamBuilder {
         Ok(Box::new(HttpObfs::new(self.host.clone(), io)))
     }
 
-    async fn build_udp(
-        &self,
-        io: BoxProxyUdpStream,
-        build_tcp_inside: bool,
-    ) -> io::Result<BoxProxyUdpStream> {
+    async fn build_udp(&self, io: BoxProxyUdpStream, build_tcp_inside: bool) -> io::Result<BoxProxyUdpStream> {
         if build_tcp_inside {
             return Ok(Box::new(HttpObfs::new(self.host.clone(), io)));
         }

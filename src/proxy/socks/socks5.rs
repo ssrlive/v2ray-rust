@@ -10,8 +10,6 @@ use bytes::{Buf, BufMut, Bytes, BytesMut};
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 use std::collections::HashMap;
-use std::io;
-use std::io::Error;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -35,19 +33,13 @@ impl<S: AsyncReadExt + Unpin + AsyncWriteExt> Socks5Stream<S> {
             local_addr: Address::SocketAddress(local_addr),
         }
     }
-    pub async fn init(
-        mut self,
-        udp_addr: Option<SocketAddr>,
-        udp_socket: &mut Option<UdpSocket>,
-    ) -> io::Result<(S, Address)> {
+    pub async fn init(mut self, udp_addr: Option<SocketAddr>, udp_socket: &mut Option<UdpSocket>) -> std::io::Result<(S, Address)> {
+        use std::io::{Error, ErrorKind::Other};
         let mut header = [0u8; 2];
         self.stream.read_exact(&mut header).await?;
         if header[0] != SOCKS_VERSION {
             self.stream.shutdown().await?;
-            return Err(Error::new(
-                io::ErrorKind::Other,
-                format!("socks version {:#x} is not supported", header[0]),
-            ));
+            return Err(Error::new(Other, format!("socks version {:#x} is not supported", header[0])));
         } else {
             self.read_buf.reserve(header[1] as usize);
             let mut len = 0usize;
@@ -91,10 +83,7 @@ impl<S: AsyncReadExt + Unpin + AsyncWriteExt> Socks5Stream<S> {
                             let response = [1, response_code::FAILURE];
                             self.stream.write_all(&response).await?;
                             self.stream.shutdown().await?;
-                            return Err(Error::new(
-                                io::ErrorKind::Other,
-                                "socks5 client auth failure",
-                            ));
+                            return Err(Error::new(Other, "socks5 client auth failure"));
                         }
                     }
                 }
@@ -105,19 +94,13 @@ impl<S: AsyncReadExt + Unpin + AsyncWriteExt> Socks5Stream<S> {
                 response[1] = auth_methods::NO_METHODS;
                 self.stream.write_all(&response).await?;
                 self.stream.shutdown().await?;
-                return Err(Error::new(
-                    io::ErrorKind::Other,
-                    "socks5 client auth failure",
-                ));
+                return Err(Error::new(Other, "socks5 client auth failure"));
             }
         }
         let mut buf = [0u8; 3];
         self.stream.read_exact(&mut buf).await?;
         if buf[0] != SOCKS_VERSION {
-            return Err(Error::new(
-                io::ErrorKind::Other,
-                format!("socks version {:#x} is not supported", buf[0]),
-            ));
+            return Err(Error::new(Other, format!("socks version {:#x} is not supported", buf[0])));
         }
         let address: Address = Address::read_from_stream(&mut self.stream).await?;
         //cmd
@@ -125,8 +108,7 @@ impl<S: AsyncReadExt + Unpin + AsyncWriteExt> Socks5Stream<S> {
             socks_command::CONNECT => {
                 self.read_buf.clear();
                 self.read_buf.reserve(self.local_addr.serialized_len() + 3);
-                self.read_buf
-                    .put_slice(&[SOCKS_VERSION, response_code::SUCCESS, 0x00]);
+                self.read_buf.put_slice(&[SOCKS_VERSION, response_code::SUCCESS, 0x00]);
                 self.local_addr.write_to_buf(&mut self.read_buf);
                 self.stream.write_all(&self.read_buf).await?;
                 Ok((self.stream, address))
@@ -139,8 +121,7 @@ impl<S: AsyncReadExt + Unpin + AsyncWriteExt> Socks5Stream<S> {
                 let addr = Address::SocketAddress(udp_addr);
                 self.read_buf.clear();
                 self.read_buf.reserve(address.serialized_len() + 3);
-                self.read_buf
-                    .put_slice(&[SOCKS_VERSION, response_code::SUCCESS, 0x00]);
+                self.read_buf.put_slice(&[SOCKS_VERSION, response_code::SUCCESS, 0x00]);
                 addr.write_to_buf(&mut self.read_buf);
                 self.stream.write_all(&self.read_buf).await?;
                 Ok((self.stream, addr))
@@ -148,17 +129,11 @@ impl<S: AsyncReadExt + Unpin + AsyncWriteExt> Socks5Stream<S> {
             _ => {
                 self.read_buf.clear();
                 self.read_buf.reserve(address.serialized_len() + 3);
-                self.read_buf.put_slice(&[
-                    SOCKS_VERSION,
-                    response_code::COMMAND_NOT_SUPPORTED,
-                    0x00,
-                ]);
+                self.read_buf
+                    .put_slice(&[SOCKS_VERSION, response_code::COMMAND_NOT_SUPPORTED, 0x00]);
                 address.write_to_buf(&mut self.read_buf);
                 self.stream.write_all(&self.read_buf).await?;
-                Err(Error::new(
-                    io::ErrorKind::Other,
-                    format!("socks command {:#x} is not supported", buf[1]),
-                ))
+                Err(Error::new(Other, format!("socks command {:#x} is not supported", buf[1])))
             }
         }
     }
@@ -170,9 +145,9 @@ struct NatMap(
     HashMap<
         String, // outbound tag
         (
-            JoinHandle<io::Result<()>>, // outbound udp read handle
-            JoinHandle<io::Result<()>>, // outbound udp write handle
-            OutBoundPacketSender,       // outbound packet sender
+            JoinHandle<std::io::Result<()>>, // outbound udp read handle
+            JoinHandle<std::io::Result<()>>, // outbound udp write handle
+            OutBoundPacketSender,            // outbound packet sender
         ),
     >,
 );
@@ -189,12 +164,11 @@ impl NatMap {
     fn insert(
         &mut self,
         outbound_tag: &str,
-        recv_handle: JoinHandle<io::Result<()>>,
-        send_handle: JoinHandle<io::Result<()>>,
+        recv_handle: JoinHandle<std::io::Result<()>>,
+        send_handle: JoinHandle<std::io::Result<()>>,
         sender: OutBoundPacketSender,
     ) {
-        self.0
-            .insert(outbound_tag.to_string(), (recv_handle, send_handle, sender));
+        self.0.insert(outbound_tag.to_string(), (recv_handle, send_handle, sender));
     }
 }
 
@@ -229,7 +203,7 @@ impl Socks5UdpDatagram {
         router: Arc<Router>,
         inner_map: Arc<HashMap<String, ChainStreamBuilder>>,
         mut stream: TcpStream,
-    ) -> io::Result<()> {
+    ) -> std::io::Result<()> {
         let peer_ip = if socket.local_addr()?.ip().is_ipv4() {
             IpAddr::from([0u8; 4])
         } else {
@@ -248,9 +222,7 @@ impl Socks5UdpDatagram {
                 let ((target_addr, buf), local_addr) = res?;
                 if !set_local_addr {
                     // todo: check local addr
-                    let _ = std::mem::take(&mut local_addr_sender)
-                        .unwrap()
-                        .send(local_addr);
+                    let _ = std::mem::take(&mut local_addr_sender).unwrap().send(local_addr);
                     set_local_addr = true;
                 }
                 let ob = router.match_addr(&target_addr);
@@ -259,9 +231,7 @@ impl Socks5UdpDatagram {
                     let _ = tx.send((target_addr, buf));
                 } else {
                     let stream_builder = inner_map.get(ob).unwrap();
-                    let out_stream = stream_builder
-                        .build_udp(target_addr.clone(), peer_ip)
-                        .await?;
+                    let out_stream = stream_builder.build_udp(target_addr.clone(), peer_ip).await?;
                     let (mut out_stream_r, mut out_stream_w) = split_ext(out_stream);
                     let (tx, mut rx) = tokio::sync::watch::channel((target_addr, buf));
                     let tx_remote_packet = tx_remote_packet.clone();
@@ -293,12 +263,10 @@ impl Socks5UdpDatagram {
                     nat.insert(ob, read_handle, write_handle, tx);
                 }
             }
-            Ok::<(), Error>(())
+            Ok::<(), std::io::Error>(())
         });
         let local_send_handle = actix_rt::spawn(async move {
-            let local_addr = local_addr_receiver
-                .await
-                .map_err(|_| new_error("recv local addr error."))?;
+            let local_addr = local_addr_receiver.await.map_err(|_| new_error("recv local addr error."))?;
             while let Some((buf, from_addr)) = rx_remote_packet.recv().await {
                 debug_log!(
                     "write udp packet to local addr:{},buf len:{},from_addr:{}",
@@ -310,7 +278,7 @@ impl Socks5UdpDatagram {
                 w.feed(((buf.freeze(), from_addr), local_addr)).await?;
                 w.flush().await?;
             }
-            Ok::<(), Error>(())
+            Ok::<(), std::io::Error>(())
         });
         let mut buf = [0u8; 0x10];
         let _ = stream.read(&mut buf).await;
@@ -333,7 +301,7 @@ impl Socks5UdpDatagram {
 pub struct Socks5UdpCodec;
 
 impl Encoder<(Bytes, Address)> for Socks5UdpCodec {
-    type Error = Error;
+    type Error = std::io::Error;
 
     fn encode(&mut self, item: (Bytes, Address), dst: &mut BytesMut) -> Result<(), Self::Error> {
         dst.reserve(3 + item.1.serialized_len() + item.0.len());
@@ -346,7 +314,7 @@ impl Encoder<(Bytes, Address)> for Socks5UdpCodec {
 
 impl Decoder for Socks5UdpCodec {
     type Item = (Address, BytesMut);
-    type Error = Error;
+    type Error = std::io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         if src.len() < 3 {

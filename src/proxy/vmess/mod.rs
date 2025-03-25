@@ -1,9 +1,7 @@
 use crate::debug_log;
 use crate::proxy::vmess::vmess_option::VmessOption;
 use crate::proxy::vmess::vmess_stream::VmessStream;
-use crate::proxy::{
-    Address, BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType,
-};
+use crate::proxy::{Address, BoxProxyStream, BoxProxyUdpStream, ChainableStreamBuilder, ProtocolType};
 use async_trait::async_trait;
 use std::io;
 
@@ -26,11 +24,7 @@ impl ChainableStreamBuilder for VmessBuilder {
         Ok(Box::new(VmessStream::new(opt, io)))
     }
 
-    async fn build_udp(
-        &self,
-        io: BoxProxyUdpStream,
-        build_tcp_inside: bool,
-    ) -> io::Result<BoxProxyUdpStream> {
+    async fn build_udp(&self, io: BoxProxyUdpStream, build_tcp_inside: bool) -> io::Result<BoxProxyUdpStream> {
         let mut opt = self.vmess_option.clone();
         opt.is_udp = !build_tcp_inside;
         Ok(Box::new(VmessStream::new(opt, io)))

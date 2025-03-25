@@ -6,11 +6,7 @@ use http::Method;
 use http::uri::PathAndQuery;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
-use std::env;
-use std::io::Cursor;
-use std::path::PathBuf;
 use tokio_tungstenite::tungstenite::http::Uri;
-use uuid::Uuid;
 
 pub(super) fn from_str_to_cipher_kind<'de, D>(deserializer: D) -> Result<CipherKind, D::Error>
 where
@@ -31,12 +27,9 @@ where
     D: Deserializer<'de>,
 {
     let addr: &str = Deserialize::deserialize(deserializer)?;
-    addr.parse()
-        .map_err(|e: AddressError| Error::custom(e.as_str()))
+    addr.parse().map_err(|e: AddressError| Error::custom(e.as_str()))
 }
-pub(super) fn from_str_to_option_address<'de, D>(
-    deserializer: D,
-) -> Result<Option<Address>, D::Error>
+pub(super) fn from_str_to_option_address<'de, D>(deserializer: D) -> Result<Option<Address>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -72,12 +65,12 @@ where
     Ok(security_num)
 }
 
-pub(super) fn from_str_to_uuid<'de, D>(deserializer: D) -> Result<Uuid, D::Error>
+pub(super) fn from_str_to_uuid<'de, D>(deserializer: D) -> Result<uuid::Uuid, D::Error>
 where
     D: Deserializer<'de>,
 {
     let uuid_str: &str = Deserialize::deserialize(deserializer)?;
-    Uuid::parse_str(uuid_str).map_err(Error::custom)
+    uuid::Uuid::parse_str(uuid_str).map_err(Error::custom)
 }
 
 #[derive(Clone)]
@@ -149,10 +142,7 @@ impl EarlyDataUri {
                 if let Some(a) = parts.authority {
                     new_uri = new_uri.authority(a);
                 }
-                let uri = new_uri
-                    .path_and_query(new_query.as_str())
-                    .build()
-                    .map_err(new_error)?;
+                let uri = new_uri.path_and_query(new_query.as_str()).build().map_err(new_error)?;
 
                 return Ok(EarlyDataUri {
                     uri,
@@ -210,7 +200,7 @@ fn is_valid_dns_id(hostname: &[u8]) -> bool {
         return false;
     }
 
-    let mut input = Cursor::new(hostname);
+    let mut input = std::io::Cursor::new(hostname);
 
     let mut label_length = 0;
     let mut label_is_all_numeric = false;
@@ -314,7 +304,7 @@ pub(super) fn default_true() -> bool {
     true
 }
 pub(super) fn default_random_string() -> String {
-    let id = Uuid::new_v4();
+    let id = uuid::Uuid::new_v4();
     id.to_string()
 }
 
@@ -323,12 +313,12 @@ pub(super) fn default_http2_method() -> Method {
     Method::PUT
 }
 
-fn default_v2ray_asset_path(file_name: &str) -> PathBuf {
-    let mut prefix = env::var("v2ray.location.asset")
-        .or_else(|_| env::var("V2RAY_LOCATION_ASSET"))
-        .map(PathBuf::from)
+fn default_v2ray_asset_path(file_name: &str) -> std::path::PathBuf {
+    let mut prefix = std::env::var("v2ray.location.asset")
+        .or_else(|_| std::env::var("V2RAY_LOCATION_ASSET"))
+        .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| {
-            let mut path_buf = env::current_exe().unwrap_or_default();
+            let mut path_buf = std::env::current_exe().unwrap_or_default();
             path_buf.pop();
             path_buf
         });
@@ -337,11 +327,11 @@ fn default_v2ray_asset_path(file_name: &str) -> PathBuf {
     prefix
 }
 
-pub(super) fn default_v2ray_geosite_path() -> PathBuf {
+pub(super) fn default_v2ray_geosite_path() -> std::path::PathBuf {
     default_v2ray_asset_path("geosite.dat")
 }
 
-pub(super) fn default_v2ray_geoip_path() -> PathBuf {
+pub(super) fn default_v2ray_geoip_path() -> std::path::PathBuf {
     default_v2ray_asset_path("geoip.dat")
 }
 

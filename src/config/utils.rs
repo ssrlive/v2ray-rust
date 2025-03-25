@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::slice::IterMut;
-use std::vec::IntoIter;
 
 pub(super) struct KeepInsertOrderMap<V> {
     data: Vec<(String, V)>,
@@ -33,7 +32,7 @@ impl<V> KeepInsertOrderMap<V> {
         self.order.contains_key(k.as_ref())
     }
 
-    pub(super) fn into_iter(self) -> IntoIter<(String, V)> {
+    pub(super) fn into_iter(self) -> std::vec::IntoIter<(String, V)> {
         self.data.into_iter()
     }
 

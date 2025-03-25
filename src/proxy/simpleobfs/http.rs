@@ -6,8 +6,6 @@ use futures_util::ready;
 use gentian::gentian;
 use hyper::Request;
 use rand::Rng;
-use std::io;
-use std::io::{Error, ErrorKind};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
@@ -17,7 +15,7 @@ pub struct HttpObfs<S> {
     host: Address,
     buffer: Vec<u8>,
     pos: usize,
-    write_res: Poll<io::Result<usize>>,
+    write_res: Poll<std::io::Result<usize>>,
     write_state: u32, // for state machine generator
     read_state: u32,  // for state machine generator
 }
@@ -43,25 +41,16 @@ where
     S: AsyncRead + Unpin,
 {
     #[gentian]
-    #[gentian_attr(state=self.read_state,ret_val=Err(ErrorKind::UnexpectedEof.into()).into())]
-    fn priv_poll_read(
-        mut self: Pin<&mut Self>,
-        ctx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
+    #[gentian_attr(state=self.read_state,ret_val=Err(std::io::ErrorKind::UnexpectedEof.into()).into())]
+    fn priv_poll_read(mut self: Pin<&mut Self>, ctx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
         loop {
             co_await(Pin::new(&mut self.stream).poll_read(ctx, buf));
-            if (buf
-                .filled()
-                .windows(4)
-                .position(|w| w == b"\r\n\r\n")
-                .map_or(false, |s| {
-                    let len = buf.filled().len();
-                    buf.filled_mut().copy_within(s + 4..len, 0);
-                    buf.set_filled(len - s - 4);
-                    true
-                }))
-            {
+            if (buf.filled().windows(4).position(|w| w == b"\r\n\r\n").map_or(false, |s| {
+                let len = buf.filled().len();
+                buf.filled_mut().copy_within(s + 4..len, 0);
+                buf.set_filled(len - s - 4);
+                true
+            })) {
                 co_yield(Poll::Ready(Ok(())));
                 break;
             } else {
@@ -79,12 +68,8 @@ where
     S: AsyncWrite + Unpin,
 {
     #[gentian]
-    #[gentian_attr(state=self.write_state,ret_val=Err(ErrorKind::UnexpectedEof.into()).into())]
-    fn priv_poll_write(
-        mut self: Pin<&mut Self>,
-        ctx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<io::Result<usize>> {
+    #[gentian_attr(state=self.write_state,ret_val=Err(std::io::ErrorKind::UnexpectedEof.into()).into())]
+    fn priv_poll_write(mut self: Pin<&mut Self>, ctx: &mut Context<'_>, buf: &[u8]) -> Poll<std::io::Result<usize>> {
         let mut rng = rand::rng();
         let mut encoded_buf = String::new();
         let mut salt = [0u8; 16];
@@ -103,8 +88,7 @@ where
             .body(())
             .unwrap();
         let (parts, _body) = req.into_parts();
-        self.buffer
-            .extend_from_slice(parts.method.as_str().as_bytes());
+        self.buffer.extend_from_slice(parts.method.as_str().as_bytes());
         self.buffer.extend_from_slice(b" ");
         self.buffer.extend_from_slice(parts.uri.path().as_bytes());
         self.buffer.extend_from_slice(b" ");
@@ -127,15 +111,13 @@ where
     }
 
     #[inline]
-    fn write_buffer_data(&mut self, ctx: &mut Context<'_>) -> Poll<io::Result<usize>> {
+    fn write_buffer_data(&mut self, ctx: &mut Context<'_>) -> Poll<std::io::Result<usize>> {
         while self.pos < self.buffer.len() {
             let n = ready!(Pin::new(&mut self.stream).poll_write(ctx, &self.buffer[self.pos..]))?;
             self.pos += n;
             if n == 0 {
-                return Poll::Ready(Err(io::Error::new(
-                    ErrorKind::WriteZero,
-                    "write zero byte into writer",
-                )));
+                use std::io::{Error, ErrorKind::WriteZero};
+                return Poll::Ready(Err(Error::new(WriteZero, "write zero byte into writer")));
             }
         }
         Poll::Ready(Ok(0))

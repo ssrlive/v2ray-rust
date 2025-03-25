@@ -19,27 +19,12 @@ macro_rules! syscall {
 
 #[allow(dead_code)]
 #[cfg(unix)]
-pub(crate) unsafe fn setsockopt<T>(
-    fd: c_int,
-    opt: c_int,
-    val: c_int,
-    payload: T,
-) -> std::io::Result<()> {
+pub(crate) unsafe fn setsockopt<T>(fd: c_int, opt: c_int, val: c_int, payload: T) -> std::io::Result<()> {
     let payload = &payload as *const T as *const libc::c_void;
-    syscall!(setsockopt(
-        fd,
-        opt,
-        val,
-        payload,
-        std::mem::size_of::<T>() as libc::socklen_t,
-    ))
-    .map(|_| ())
+    syscall!(setsockopt(fd, opt, val, payload, std::mem::size_of::<T>() as libc::socklen_t,)).map(|_| ())
 }
 
-pub(crate) fn build_dokodemo_door_listener(
-    door: &mut DokodemoDoor,
-    backlog: u32,
-) -> std::io::Result<TcpListener> {
+pub(crate) fn build_dokodemo_door_listener(door: &mut DokodemoDoor, backlog: u32) -> std::io::Result<TcpListener> {
     let domain = match door.addr {
         Address::SocketAddress(SocketAddr::V4(_)) => socket2::Domain::IPV4,
         Address::SocketAddress(SocketAddr::V6(_)) => socket2::Domain::IPV6,
@@ -56,12 +41,7 @@ pub(crate) fn build_dokodemo_door_listener(
         if domain == socket2::Domain::IPV6 {
             unsafe {
                 use std::os::unix::io::AsRawFd;
-                setsockopt(
-                    socket.as_raw_fd(),
-                    libc::SOL_IPV6,
-                    libc::IPV6_TRANSPARENT,
-                    door.tproxy as c_int,
-                )?;
+                setsockopt(socket.as_raw_fd(), libc::SOL_IPV6, libc::IPV6_TRANSPARENT, door.tproxy as c_int)?;
             }
         } else {
             socket.set_ip_transparent(door.tproxy)?;

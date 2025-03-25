@@ -12,10 +12,7 @@ fn main() {
         .compile_protos(&["src/api/api.proto"], &["src/api/"])
         .unwrap();
     #[cfg(feature = "enable-useless")]
-    let customize = Customize::default()
-        .gen_mod_rs(false)
-        .tokio_bytes(true)
-        .generate_getter(true);
+    let customize = Customize::default().gen_mod_rs(false).tokio_bytes(true).generate_getter(true);
     #[cfg(feature = "enable-useless")]
     protobuf_codegen::Codegen::new()
         .out_dir("src/")

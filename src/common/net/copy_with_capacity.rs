@@ -1,7 +1,5 @@
 use futures_util::ready;
 use std::future::Future;
-use std::io;
-
 use std::pin::Pin;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering::Relaxed;
@@ -24,7 +22,7 @@ pub async fn copy_with_capacity_and_counter<'a, R, W>(
     writer: &'a mut W,
     counter: &'a mut u64,
     buf_capacity: usize,
-) -> io::Result<u64>
+) -> std::io::Result<u64>
 where
     R: AsyncRead + Unpin + ?Sized,
     W: AsyncWrite + Unpin + ?Sized,
@@ -46,9 +44,9 @@ where
     R: AsyncRead + Unpin + ?Sized,
     W: AsyncWrite + Unpin + ?Sized,
 {
-    type Output = io::Result<u64>;
+    type Output = std::io::Result<u64>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<u64>> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<u64>> {
         loop {
             // If our buffer is empty, then we need to read some data to
             // continue.
@@ -70,10 +68,8 @@ where
                 let me = &mut *self;
                 let i = ready!(Pin::new(&mut *me.writer).poll_write(cx, &me.buf[me.pos..me.cap]))?;
                 if i == 0 {
-                    return Poll::Ready(Err(io::Error::new(
-                        io::ErrorKind::WriteZero,
-                        "write zero byte into writer",
-                    )));
+                    use std::io::{Error, ErrorKind::WriteZero};
+                    return Poll::Ready(Err(Error::new(WriteZero, "write zero byte into writer")));
                 } else {
                     self.pos += i;
                     *self.amt += i as u64;
@@ -109,7 +105,7 @@ pub async fn copy_with_capacity_and_atomic_counter<'a, R, W>(
     counter_in: &'a AtomicU64,
     counter_out: &'a AtomicU64,
     buf_capacity: usize,
-) -> io::Result<()>
+) -> std::io::Result<()>
 where
     R: AsyncRead + Unpin + ?Sized,
     W: AsyncWrite + Unpin + ?Sized,
@@ -132,9 +128,9 @@ where
     R: AsyncRead + Unpin + ?Sized,
     W: AsyncWrite + Unpin + ?Sized,
 {
-    type Output = io::Result<()>;
+    type Output = std::io::Result<()>;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         loop {
             // If our buffer is empty, then we need to read some data to
             // continue.
@@ -157,10 +153,8 @@ where
                 let me = &mut *self;
                 let i = ready!(Pin::new(&mut *me.writer).poll_write(cx, &me.buf[me.pos..me.cap]))?;
                 if i == 0 {
-                    return Poll::Ready(Err(io::Error::new(
-                        io::ErrorKind::WriteZero,
-                        "write zero byte into writer",
-                    )));
+                    use std::io::{Error, ErrorKind::WriteZero};
+                    return Poll::Ready(Err(Error::new(WriteZero, "write zero byte into writer")));
                 } else {
                     self.pos += i;
                     self.amt_out.fetch_add(i as u64, Relaxed);

@@ -1,7 +1,6 @@
 mod connector;
 use http::{StatusCode, header};
 use std::collections::HashMap;
-use std::io;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
@@ -12,10 +11,7 @@ use crate::common::new_error;
 use crate::config::{COUNTER_MAP, Router};
 use crate::debug_log;
 use crate::proxy::{Address, BoxProxyStream, ChainStreamBuilder};
-use hyper::{
-    Body, Client, Method, Request, Response, server::conn::Http, service::service_fn,
-    upgrade::Upgraded,
-};
+use hyper::{Body, Client, Method, Request, Response, server::conn::Http, service::service_fn, upgrade::Upgraded};
 
 use self::connector::Connector;
 
@@ -58,7 +54,7 @@ impl HttpInbound {
             inner_map,
         }
     }
-    pub async fn serve_http_conn(&self, io: TcpStream) -> io::Result<()> {
+    pub async fn serve_http_conn(&self, io: TcpStream) -> std::io::Result<()> {
         let http_conn = Http::new();
         let inner_map = self.inner_map.clone();
         let router = self.router.clone();
@@ -144,10 +140,7 @@ async fn proxy_connect(
         Ok(resp)
     }
 }
-async fn proxy(
-    mut req: Request<Body>,
-    client: Client<Connector>,
-) -> Result<Response<Body>, hyper::Error> {
+async fn proxy(mut req: Request<Body>, client: Client<Connector>) -> Result<Response<Body>, hyper::Error> {
     remove_proxy_headers(&mut req);
     debug_log!("http proxy server req: {:?}", req);
     let response: Result<Response<Body>, hyper::Error> = client.request(req).await;
@@ -178,7 +171,7 @@ async fn tunnel(
     in_counter_up: Option<&'static AtomicU64>,
     in_counter_down: Option<&'static AtomicU64>,
     relay_buffer_size: usize,
-) -> io::Result<()> {
+) -> std::io::Result<()> {
     // Connect to remote server
     let ob = router.match_addr(&addr);
     let stream_builder = inner_map.get(ob).unwrap();

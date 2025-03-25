@@ -4,14 +4,11 @@ use crate::deref_udp_write;
 
 use async_trait::async_trait;
 
+use bitvec::vec::BitVec;
 use std::net::{IpAddr, SocketAddr};
 use std::num::ParseIntError;
 use std::pin::Pin;
-
-use bitvec::vec::BitVec;
-use std::io;
 use std::task::{Context, Poll};
-use std::vec;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::{TcpStream, UdpSocket};
 
@@ -38,10 +35,7 @@ pub use address::{Address, AddressError};
 
 #[allow(dead_code)]
 fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
-    (0..s.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
-        .collect()
+    (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16)).collect()
 }
 
 #[allow(dead_code)]
@@ -84,12 +78,8 @@ impl ProtocolType {
 
 #[async_trait]
 pub trait ChainableStreamBuilder: Sync + Send {
-    async fn build_tcp(&self, io: BoxProxyStream) -> io::Result<BoxProxyStream>;
-    async fn build_udp(
-        &self,
-        io: BoxProxyUdpStream,
-        build_tcp_inside: bool,
-    ) -> io::Result<BoxProxyUdpStream>;
+    async fn build_tcp(&self, io: BoxProxyStream) -> std::io::Result<BoxProxyStream>;
+    async fn build_udp(&self, io: BoxProxyUdpStream, build_tcp_inside: bool) -> std::io::Result<BoxProxyUdpStream>;
     fn into_box(self) -> Box<dyn ChainableStreamBuilder>;
     fn clone_box(&self) -> Box<dyn ChainableStreamBuilder>;
     fn protocol_type(&self) -> ProtocolType;
@@ -104,22 +94,13 @@ impl Clone for Box<dyn ChainableStreamBuilder> {
     }
 }
 pub trait UdpRead {
-    fn poll_recv_from(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-        _buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<Address>> {
+    fn poll_recv_from(self: Pin<&mut Self>, _cx: &mut Context<'_>, _buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<Address>> {
         unimplemented!()
     }
 }
 
 pub trait UdpWrite {
-    fn poll_send_to(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-        _buf: &[u8],
-        _target: &Address,
-    ) -> Poll<io::Result<usize>> {
+    fn poll_send_to(self: Pin<&mut Self>, _cx: &mut Context<'_>, _buf: &[u8], _target: &Address) -> Poll<std::io::Result<usize>> {
         unimplemented!()
     }
 }
@@ -220,7 +201,7 @@ impl ChainStreamBuilder {
         self.builders.push(builder);
     }
 
-    pub async fn build_tcp(&self, proxy_addr: Address) -> io::Result<BoxProxyStream> {
+    pub async fn build_tcp(&self, proxy_addr: Address) -> std::io::Result<BoxProxyStream> {
         if self.is_black_hole {
             return Err(new_error("block connection"));
         }
@@ -231,10 +212,7 @@ impl ChainStreamBuilder {
                 outer_stream = b.build_tcp(outer_stream).await?;
             }
             if let Some(b) = &self.last_builder {
-                outer_stream = b
-                    .to_chainable_stream_builder(Some(proxy_addr))
-                    .build_tcp(outer_stream)
-                    .await?;
+                outer_stream = b.to_chainable_stream_builder(Some(proxy_addr)).build_tcp(outer_stream).await?;
             }
             Ok(outer_stream)
         } else {
@@ -244,21 +222,14 @@ impl ChainStreamBuilder {
                 outer_stream = b.build_tcp(outer_stream).await?;
             }
             if let Some(b) = &self.last_builder {
-                outer_stream = b
-                    .to_chainable_stream_builder(Some(proxy_addr))
-                    .build_tcp(outer_stream)
-                    .await?;
+                outer_stream = b.to_chainable_stream_builder(Some(proxy_addr)).build_tcp(outer_stream).await?;
             }
             Ok(outer_stream)
         }
     }
 
     /// if builder in proxy chain is UoT, then before uot builder all builder must build tcp inside
-    pub async fn build_udp(
-        &self,
-        proxy_addr: Address,
-        udp_bind_ip: IpAddr,
-    ) -> io::Result<BoxProxyUdpStream> {
+    pub async fn build_udp(&self, proxy_addr: Address, udp_bind_ip: IpAddr) -> std::io::Result<BoxProxyUdpStream> {
         if self.is_black_hole {
             return Err(new_error("block connection"));
         }
