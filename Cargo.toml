@@ -77,7 +77,7 @@ uuid = { version = "1", features = ["std", "v4"] }
 
 [build-dependencies]
 protobuf-codegen = "3"
-tonic-build = "0.12"
+tonic-build = "0.13"
 
 [profile.release]
 codegen-units = 1
