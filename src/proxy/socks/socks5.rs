@@ -189,8 +189,8 @@ impl Drop for NatMap {
 /// * First, we need put addr in nat map. Map(curr_remote_addr, current_addr)
 /// * Second, use this map to filter package source when a package need to write (i.e. poll_recv_write).
 /// * Note: A package not in this map must not call poll_recv_write
-///         to a valid current_addr and this can't be ensure by this trait.
-///         We can't figure out which source if a host in map (i.e. atyp 0x03).
+///   to a valid current_addr and this can't be ensure by this trait.
+///   We can't figure out which source if a host in map (i.e. atyp 0x03).
 ///
 /// full-cone nat
 /// * UoT: we can identify remote send to which current_addr simply.

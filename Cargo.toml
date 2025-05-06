@@ -11,7 +11,7 @@ path = "src/bin/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = []
+# default = ["strict-vmess-udp", "enable-useless"]
 strict-vmess-udp = []
 enable-useless = ["boring", "boring-sys", "prost", "tokio-boring", "tonic"]
 
@@ -30,7 +30,7 @@ bloomfilter = "3"
 boring = { version = "4", optional = true }
 boring-sys = { version = "4", optional = true }
 #cidr_matcher={git="https://github.com/Qv2ray/CIDRMatcher"}
-brotli = { version = "7", features = ["ffi-api"] }
+brotli = { version = "8", features = ["ffi-api"] }
 byte_string = "1"
 bytes = "1"
 chacha20poly1305 = "0.10"
@@ -62,7 +62,7 @@ serde = { version = "1", features = ["derive"] }
 sha-1 = "0.10"
 sha2 = "0.10"
 socket2 = { version = "0.5", features = ["all"] }
-spin = "0.9"
+spin = "0.10"
 tokio = { version = "1", features = ["net", "io-util", "macros", "sync"] }
 tokio-boring = { version = "4", optional = true }
 tokio-tungstenite = { version = "0.26", features = [
@@ -71,13 +71,13 @@ tokio-tungstenite = { version = "0.26", features = [
 ], default-features = false }
 tokio-util = { version = "0.7", features = ["codec", "net"] }
 toml = "0.8"
-tonic = { version = "0.12", optional = true }
+tonic = { version = "0.13", optional = true }
 tower = "0.5"
 uuid = { version = "1", features = ["std", "v4"] }
 
 [build-dependencies]
 protobuf-codegen = "3"
-tonic-build = "0.12"
+tonic-build = "0.13"
 
 [profile.release]
 codegen-units = 1
