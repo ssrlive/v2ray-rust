@@ -1,5 +1,8 @@
 mod connector;
+mod tokiort;
+use bytes::Bytes;
 use http::{StatusCode, header};
+use http_body_util::{BodyExt, Empty, Full, combinators::BoxBody};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -11,16 +14,21 @@ use crate::common::new_error;
 use crate::config::{COUNTER_MAP, Router};
 use crate::debug_log;
 use crate::proxy::{Address, BoxProxyStream, ChainStreamBuilder};
-use hyper::{Body, Client, Method, Request, Response, server::conn::Http, service::service_fn, upgrade::Upgraded};
+// use hyper::{Body, Client, Method, Request, Response, server::conn::Http, service::service_fn, upgrade::Upgraded};
+use hyper::{Method, Request, Response, body::Incoming, service::service_fn, upgrade::Upgraded};
+
+use tokiort::{TokioIo, TokioTimer};
+type ClientBuilder = hyper::client::conn::http1::Builder;
+type ServerBuilder = hyper::server::conn::http1::Builder;
 
 use self::connector::Connector;
 
 // To proxy tls scheme, the client must use CONNECT method. So here we are always using HTTP1.1.
-impl hyper::client::connect::Connection for BoxProxyStream {
-    fn connected(&self) -> hyper::client::connect::Connected {
-        hyper::client::connect::Connected::new()
-    }
-}
+// impl hyper::client::connect::Connection for BoxProxyStream {
+//     fn connected(&self) -> hyper::client::connect::Connected {
+//         hyper::client::connect::Connected::new()
+//     }
+// }
 
 #[derive(Clone)]
 pub struct HttpInbound {
@@ -50,14 +58,18 @@ impl HttpInbound {
         }
     }
     pub async fn serve_http_conn(&self, io: TcpStream) -> std::io::Result<()> {
-        let http_conn = Http::new();
         let inner_map = self.inner_map.clone();
         let router = self.router.clone();
         let enable_api_server = self.enable_api_server;
         let in_counter_up = self.in_counter_up;
         let in_counter_down = self.in_counter_down;
         let relay_buffer_size = self.relay_buffer_size;
-        let conn = http_conn
+
+        let io = TokioIo::new(io);
+        let res = ServerBuilder::new()
+            .timer(TokioTimer::new())
+            .preserve_header_case(true)
+            .title_case_headers(true)
             .serve_connection(
                 io,
                 service_fn(|req| {
@@ -76,24 +88,30 @@ impl HttpInbound {
                             )
                             .await
                         } else {
-                            let client = Client::builder()
-                                .http1_preserve_header_case(true)
-                                .build(Connector::new(inner_map, router));
+                            let connector = Connector::new(inner_map.clone(), router.clone());
+                            let io = TokioIo::new(connector);
+                            let (mut sender, conn) = ClientBuilder::new()
+                                .preserve_header_case(true)
+                                .title_case_headers(true)
+                                .handshake(io)
+                                .await?;
+
                             proxy(req, client).await
                         }
                     }
                 }),
             )
-            .with_upgrades();
-        if let Err(e) = conn.await {
-            return Err(new_error(e));
+            .with_upgrades()
+            .await;
+        if let Err(err) = res {
+            println!("Failed to serve connection: {:?}", err);
         }
         Ok(())
     }
 }
 
 async fn proxy_connect(
-    req: Request<Body>,
+    req: Request<Incoming>,
     inner_map: Arc<HashMap<String, ChainStreamBuilder>>,
     router: Arc<Router>,
 
@@ -101,7 +119,7 @@ async fn proxy_connect(
     in_counter_up: Option<&'static AtomicU64>,
     in_counter_down: Option<&'static AtomicU64>,
     relay_buffer_size: usize,
-) -> Result<Response<Body>, hyper::Error> {
+) -> Result<Response<BoxBody<Bytes, hyper::Error>>, hyper::Error> {
     if let Some(addr) = host_addr(req.uri()) {
         tokio::task::spawn(async move {
             let inner_map = inner_map;
@@ -127,23 +145,24 @@ async fn proxy_connect(
             }
         });
 
-        Ok(Response::new(Body::empty()))
+        Ok(Response::new(Empty::<Bytes>::new().map_err(|never| match never {}).boxed()))
     } else {
         log::error!("CONNECT host is not socket addr: {:?}", req.uri());
-        let mut resp = Response::new(Body::from("CONNECT must be to a socket address"));
+        let info = "CONNECT must be to a socket address";
+        let mut resp = Response::new(Full::new(info.into()).map_err(|never| match never {}).boxed());
         *resp.status_mut() = http::StatusCode::BAD_REQUEST;
 
         Ok(resp)
     }
 }
-async fn proxy(mut req: Request<Body>, client: Client<Connector>) -> Result<Response<Body>, hyper::Error> {
+async fn proxy(mut req: Request<Incoming>, client: Client<Connector>) -> Result<Response<BoxBody<Bytes, hyper::Error>>, hyper::Error> {
     remove_proxy_headers(&mut req);
     debug_log!("http proxy server req: {:?}", req);
-    let response: Result<Response<Body>, hyper::Error> = client.request(req).await;
+    let response: Result<Response<BoxBody<Bytes, hyper::Error>>, hyper::Error> = client.request(req).await;
     if response.is_err() {
         Ok(Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(Body::empty())
+            .body(Empty::<Bytes>::new().map_err(|never| match never {}).boxed())
             .unwrap())
     } else {
         response
@@ -197,7 +216,7 @@ async fn tunnel(
     Ok(())
 }
 
-pub fn remove_proxy_headers(req: &mut Request<Body>) {
+pub fn remove_proxy_headers(req: &mut Request<Incoming>) {
     // Remove headers that shouldn't be forwarded to upstream
     req.headers_mut().remove(header::ACCEPT_ENCODING);
     req.headers_mut().remove(header::CONNECTION);
