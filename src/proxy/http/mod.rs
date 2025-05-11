@@ -26,7 +26,6 @@ impl hyper::client::connect::Connection for BoxProxyStream {
 pub struct HttpInbound {
     inner_map: Arc<HashMap<String, ChainStreamBuilder>>,
     router: Arc<Router>,
-    client: Client<Connector>,
     enable_api_server: bool,
     in_counter_up: Option<&'static AtomicU64>,
     in_counter_down: Option<&'static AtomicU64>,
@@ -41,11 +40,7 @@ impl HttpInbound {
         in_counter_down: Option<&'static AtomicU64>,
         relay_buffer_size: usize,
     ) -> Self {
-        let client = Client::builder()
-            .http1_preserve_header_case(true)
-            .build(Connector::new(inner_map.clone(), router.clone()));
         Self {
-            client,
             router,
             enable_api_server,
             in_counter_up,
@@ -62,14 +57,12 @@ impl HttpInbound {
         let in_counter_up = self.in_counter_up;
         let in_counter_down = self.in_counter_down;
         let relay_buffer_size = self.relay_buffer_size;
-        let client = self.client.clone();
         let conn = http_conn
             .serve_connection(
                 io,
                 service_fn(|req| {
                     let inner_map = inner_map.clone();
                     let router = router.clone();
-                    let client = client.clone();
                     async move {
                         if Method::CONNECT == req.method() {
                             proxy_connect(
@@ -83,6 +76,9 @@ impl HttpInbound {
                             )
                             .await
                         } else {
+                            let client = Client::builder()
+                                .http1_preserve_header_case(true)
+                                .build(Connector::new(inner_map, router));
                             proxy(req, client).await
                         }
                     }
