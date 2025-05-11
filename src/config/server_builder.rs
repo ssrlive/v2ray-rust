@@ -9,14 +9,13 @@ use crate::proxy::socks::socks5::{Socks5Stream, Socks5UdpDatagram};
 use crate::proxy::{Address, ChainStreamBuilder};
 use actix_server::Server;
 use actix_service::fn_service;
-use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 use tokio::net::TcpStream;
 
-pub static COUNTER_MAP: OnceCell<HashMap<String, AtomicU64>> = OnceCell::new();
+pub static COUNTER_MAP: std::sync::OnceLock<HashMap<String, AtomicU64>> = std::sync::OnceLock::new();
 
 pub struct ConfigServerBuilder {
     backlog: u32,

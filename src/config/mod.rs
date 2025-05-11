@@ -23,7 +23,7 @@ use crate::config::deserialize::{
 use crate::config::deserialize::{default_true, from_str_to_sni};
 use crate::config::route::build_router;
 use crate::proxy::shadowsocks::aead_helper::CipherKind;
-use crate::proxy::shadowsocks::context::{BloomContext, SharedBloomContext};
+use crate::proxy::shadowsocks::context::BloomContext;
 use crate::proxy::{Address, ChainStreamBuilder, ProtocolType};
 
 use serde::Deserialize;
@@ -31,8 +31,8 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Read;
 
 use uuid::Uuid;
-static SS_LOCAL_SHARED_CONTEXT: once_cell::sync::Lazy<SharedBloomContext> =
-    once_cell::sync::Lazy::new(|| std::sync::Arc::new(BloomContext::new(true).expect("BloomContext")));
+static SS_LOCAL_SHARED_CONTEXT: std::sync::LazyLock<std::sync::Arc<BloomContext>> =
+    std::sync::LazyLock::new(|| std::sync::Arc::new(BloomContext::new(true).expect("BloomContext")));
 
 #[derive(Deserialize, Clone)]
 struct VmessConfig {
