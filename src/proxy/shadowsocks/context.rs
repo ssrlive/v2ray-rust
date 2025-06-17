@@ -45,11 +45,11 @@ impl PingPongBloom {
 
         item_count /= 2;
 
-        use std::io::{Error, ErrorKind::Other};
+        use std::io::Error;
         Ok(PingPongBloom {
             blooms: [
-                Bloom::new_for_fp_rate(item_count, fp_p).map_err(|e| Error::new(Other, e))?,
-                Bloom::new_for_fp_rate(item_count, fp_p).map_err(|e| Error::new(Other, e))?,
+                Bloom::new_for_fp_rate(item_count, fp_p).map_err(Error::other)?,
+                Bloom::new_for_fp_rate(item_count, fp_p).map_err(Error::other)?,
             ],
             bloom_count: [0, 0],
             item_count,

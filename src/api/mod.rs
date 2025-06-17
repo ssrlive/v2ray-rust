@@ -90,7 +90,7 @@ impl LatencyService for ApiLatencyServer {
         } else {
             let mut vec_fut = Vec::new();
             let test_url = request.get_ref().test_url.as_str();
-            let addr = Address::from_str(test_url).map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "invalid test url"))?;
+            let addr = Address::from_str(test_url).map_err(|_| std::io::Error::other("invalid test url"))?;
             for (name, _) in self.inner_map.iter() {
                 let name = name.clone();
                 let addr = addr.clone();

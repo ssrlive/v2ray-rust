@@ -121,7 +121,7 @@ where
             let nonce = buf.as_ref();
             // Got iv/salt, check if it is repeated
             if ctx.check_nonce_and_set(nonce) {
-                let err = Error::new(ErrorKind::Other, "detected repeated iv/salt");
+                let err = Error::other("detected repeated iv/salt");
                 return Poll::Ready(Err(err));
             }
             let dec = match method {

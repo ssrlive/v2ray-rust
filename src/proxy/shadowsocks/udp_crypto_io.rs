@@ -116,11 +116,11 @@ fn decrypt_payload_aead(method: CipherKind, key: &[u8], payload: &mut [u8]) -> s
     let mut cipher = AeadCipher::new(method, key, salt);
 
     if data.len() < tag_len {
-        return Err(std::io::Error::new(std::io::ErrorKind::Other, "udp packet too short for tag"));
+        return Err(std::io::Error::other("udp packet too short for tag"));
     }
 
     if !cipher.decrypt(data) {
-        return Err(std::io::Error::new(std::io::ErrorKind::Other, "invalid tag-in"));
+        return Err(std::io::Error::other("invalid tag-in"));
     }
 
     // Truncate TAG

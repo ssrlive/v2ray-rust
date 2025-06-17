@@ -6,7 +6,7 @@ use security_framework::trust_settings::{Domain, TrustSettings, TrustSettingsFor
 use std::io;
 
 use std::collections::HashMap;
-use std::io::{Error, ErrorKind};
+use std::io::Error;
 
 // Adapted from https://github.com/rustls/rustls-native-certs
 pub fn load_native_certs() -> io::Result<Vec<X509>> {
@@ -25,7 +25,7 @@ pub fn load_native_certs() -> io::Result<Vec<X509>> {
 
     for domain in &[Domain::User, Domain::Admin, Domain::System] {
         let ts = TrustSettings::new(*domain);
-        let iter = ts.iter().map_err(|err| Error::new(ErrorKind::Other, err))?;
+        let iter = ts.iter().map_err(Error::other)?;
 
         for cert in iter {
             let der = cert.to_der();
@@ -38,7 +38,7 @@ pub fn load_native_certs() -> io::Result<Vec<X509>> {
             //  with a resulting kSecTrustSettingsResult of kSecTrustSettingsResultTrustRoot".
             let trusted = ts
                 .tls_trust_settings_for_certificate(&cert)
-                .map_err(|err| Error::new(ErrorKind::Other, err))?
+                .map_err(Error::other)?
                 .unwrap_or(TrustSettingsForCertificate::TrustRoot);
 
             all_certs.entry(der).or_insert(trusted);

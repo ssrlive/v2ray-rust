@@ -34,7 +34,7 @@ impl tower::Service<Uri> for Connector {
     }
 
     fn call(&mut self, uri: Uri) -> Self::Future {
-        use std::io::{Error, ErrorKind::Other};
+        use std::io::Error;
         let is_tls_scheme = uri.scheme().map(|s| s == &Scheme::HTTPS || s.as_str() == "wss").unwrap_or(false);
 
         let addr = uri.authority().map(|x| x.as_str()).unwrap_or("");
@@ -45,7 +45,7 @@ impl tower::Service<Uri> for Connector {
             match addr {
                 Ok(addr) => {
                     if is_tls_scheme {
-                        let err = Error::new(Other, "HTTP inbound target URI is tls and the client is not using CONNECT method.");
+                        let err = Error::other("HTTP inbound target URI is tls and the client is not using CONNECT method.");
                         log::error!("HTTP inbound target URI is tls and the client is not using CONNECT method. URI is: {uri}");
                         return Err(err);
                     }
@@ -53,7 +53,7 @@ impl tower::Service<Uri> for Connector {
                     let stream_builder = inner_map.get(ob).unwrap();
                     log::info!("routing {} to outbound:{}", addr, ob);
                     if stream_builder.is_blackhole() {
-                        let err = Error::new(Other, "HTTP inbound target URI is in blackhole");
+                        let err = Error::other("HTTP inbound target URI is in blackhole");
                         return Err(err);
                     }
                     let server = stream_builder.build_tcp(addr).await?;
@@ -61,7 +61,7 @@ impl tower::Service<Uri> for Connector {
                 }
                 Err(_) => {
                     log::error!("HTTP inbound target URI must be a valid address, but found: {}", uri);
-                    let err = Error::new(Other, "URI must be a valid Address");
+                    let err = Error::other("URI must be a valid Address");
                     Err(err)
                 }
             }

@@ -13,7 +13,7 @@ pub const HW_BUFFER_SIZE: usize = 65_536;
 pub const AES_128_GCM_TAG_LEN: usize = 16;
 pub fn new_error<T: ToString>(message: T) -> std::io::Error {
     debug_log!("new error message:{}", message.to_string());
-    std::io::Error::new(std::io::ErrorKind::Other, format!("Error: {}", message.to_string()))
+    std::io::Error::other(format!("Error: {}", message.to_string()))
 }
 
 #[allow(dead_code)]
