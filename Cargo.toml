@@ -53,7 +53,7 @@ hyper = { version = "0.14", features = ["http1", "http2", "client", "server"] }
 libc = "0.2"
 log = "0.4"
 md-5 = "0.10"
-prost = { version = "0.13", optional = true }
+prost = { version = "0.14", optional = true }
 protobuf = { version = "=3.7.2", features = ["with-bytes"] }
 rand = { version = "0.9", features = ["small_rng"] }
 regex = "1"
@@ -69,8 +69,9 @@ tokio-tungstenite = { version = "0.27", features = [
     "handshake",
 ], default-features = false }
 tokio-util = { version = "0.7", features = ["codec", "net"] }
-toml = "0.8"
-tonic = { version = "0.13", optional = true }
+toml = "0.9"
+tonic = { version = "0.14", optional = true }
+tonic-prost = "0.14"
 tower = "0.5"
 uuid = { version = "1", features = ["std", "v4"] }
 
@@ -85,7 +86,7 @@ schannel = "0.1"
 
 [build-dependencies]
 protobuf-codegen = "3"
-tonic-build = "0.13"
+tonic-prost-build = "0.14"
 
 [profile.release]
 codegen-units = 1
