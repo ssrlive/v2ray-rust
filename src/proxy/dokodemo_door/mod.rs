@@ -44,7 +44,7 @@ pub(crate) fn build_dokodemo_door_listener(door: &mut DokodemoDoor, backlog: u32
                 setsockopt(socket.as_raw_fd(), libc::SOL_IPV6, libc::IPV6_TRANSPARENT, door.tproxy as c_int)?;
             }
         } else {
-            socket.set_ip_transparent(door.tproxy)?;
+            socket.set_ip_transparent_v4(door.tproxy)?;
         }
     }
     let addr = door.addr.get_sock_addr().into();

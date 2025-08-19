@@ -6,7 +6,7 @@ fn main() {
     println!("cargo:rerun-if-changed=src/config/geoip.proto");
     println!("cargo:rerun-if-changed=src/api/api.proto");
     #[cfg(feature = "enable-useless")]
-    tonic_build::configure()
+    tonic_prost_build::configure()
         .build_client(false)
         .protoc_arg("--experimental_allow_proto3_optional")
         .compile_protos(&["src/api/api.proto"], &["src/api/"])
