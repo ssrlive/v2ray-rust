@@ -190,7 +190,7 @@ jobs:
     
     
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: v2ray-rust-${{ github.sha }}-${{ matrix.config.artifact }}.7z
         path: release-tmp
